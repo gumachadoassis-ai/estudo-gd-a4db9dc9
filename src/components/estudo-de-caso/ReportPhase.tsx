@@ -231,6 +231,16 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
             </div>
           </div>
         </section>
+
+        {/* SECTION H — Product Catalog (visible on screen, hidden in PDF) */}
+        <div className="print-hide">
+          <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} />
+        </div>
+      </div>
+
+      {/* PDF-only: recommended product as budget (hidden on screen, included in PDF export) */}
+      <div id="report-budget" className="hidden">
+        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} onlyRecommended />
       </div>
 
       {/* Footer */}
