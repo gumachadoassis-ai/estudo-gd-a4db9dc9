@@ -9,13 +9,15 @@ import PilarCard from './PilarCard';
 import FunnelChart from './FunnelChart';
 import DashboardBI from './DashboardBI';
 import ExportPDF from './ExportPDF';
+import ProductCatalog from './ProductCatalog';
 
 interface ReportPhaseProps {
   relatorio: Relatorio;
 }
 
 const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
-  const { financeiro, pilares, nomeClinica, especialidade, cidade } = relatorio;
+  const { financeiro, pilares, nomeClinica, especialidade, cidade, nivelRecomendado } = relatorio;
+  const retornoEstimado = financeiro.faturamentoPerdidoMes * 3;
   const animPerdidoMes = useCountUp(financeiro.faturamentoPerdidoMes, 2000);
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -229,6 +231,16 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
             </div>
           </div>
         </section>
+
+        {/* SECTION H — Product Catalog (visible on screen, hidden in PDF) */}
+        <div className="print-hide">
+          <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} />
+        </div>
+      </div>
+
+      {/* PDF-only: recommended product as budget (hidden on screen, included in PDF export) */}
+      <div id="report-budget" className="hidden">
+        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} onlyRecommended />
       </div>
 
       {/* Footer */}
