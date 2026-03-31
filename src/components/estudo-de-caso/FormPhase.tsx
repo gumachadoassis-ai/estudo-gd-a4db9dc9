@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FormData, FORM_STEPS, STEP_FIELDS, getEmptyFormData } from './types';
 import { ChevronLeft } from 'lucide-react';
 
@@ -6,16 +6,18 @@ interface FormPhaseProps {
   onSubmit: (data: FormData) => void;
 }
 
-const FIELD_CONFIG: Record<string, { label: string; placeholder: string; type?: 'input' }> = {
+type FieldFormat = 'text' | 'currency' | 'percent' | 'number';
+
+const FIELD_CONFIG: Record<string, { label: string; placeholder: string; type?: 'input'; format?: FieldFormat }> = {
   // Etapa 0
   nomeClinica: { label: 'Nome da clínica', placeholder: 'Ex: Clínica Dra. Camila — Cirurgia Plástica', type: 'input' },
   especialidade: { label: 'Especialidade principal', placeholder: 'Ex: Cirurgia plástica estética e reconstrutiva', type: 'input' },
   cidade: { label: 'Cidade e estado', placeholder: 'Ex: Maringá — PR', type: 'input' },
-  faturamentoAtual: { label: 'Faturamento mensal atual (R$)', placeholder: 'Ex: R$ 180.000/mês', type: 'input' },
-  faturamentoDesejado: { label: 'Faturamento desejado em 12 meses (R$)', placeholder: 'Ex: R$ 350.000/mês', type: 'input' },
-  ticketMedio: { label: 'Ticket médio por procedimento (R$)', placeholder: 'Ex: R$ 12.000 por cirurgia', type: 'input' },
-  procedimentosMes: { label: 'Procedimentos realizados por mês', placeholder: 'Ex: 15 cirurgias/mês', type: 'input' },
-  taxaConversao: { label: 'Taxa de conversão atual estimada', placeholder: 'Ex: Convertemos cerca de 10% dos leads em cirurgias', type: 'input' },
+  faturamentoAtual: { label: 'Faturamento mensal atual', placeholder: 'Ex: 180000', type: 'input', format: 'currency' },
+  faturamentoDesejado: { label: 'Faturamento desejado em 12 meses', placeholder: 'Ex: 350000', type: 'input', format: 'currency' },
+  ticketMedio: { label: 'Ticket médio por procedimento', placeholder: 'Ex: 12000', type: 'input', format: 'currency' },
+  procedimentosMes: { label: 'Procedimentos realizados por mês', placeholder: 'Ex: 15', type: 'input', format: 'number' },
+  taxaConversao: { label: 'Taxa de conversão atual estimada', placeholder: 'Ex: 10', type: 'input', format: 'percent' },
   // Etapa 1 — Posicionamento
   gmb_status: { label: 'Situação atual do perfil no Google', placeholder: 'Ex: Perfil verificado, nota 4.6, 87 avaliações. Respondemos quase todas.' },
   gmb_fotos: { label: 'Qualidade das fotos e atualização', placeholder: 'Ex: Fotos profissionais da clínica, equipe e procedimentos. Atualizadas há 3 meses.' },
@@ -30,25 +32,25 @@ const FIELD_CONFIG: Record<string, { label: string; placeholder: string; type?: 
   posicao_diferencial: { label: 'Qual o diferencial percebido pelos pacientes?', placeholder: 'Ex: Excelência técnica, mas não comunicada.' },
   posicao_proposta: { label: 'Qual a promessa principal de valor da clínica?', placeholder: 'Ex: "Resultados naturais com segurança" — mas está em nenhum lugar.' },
   // Etapa 2 — Performance
-  trafego_investimento: { label: 'Investe em tráfego pago? Quanto?', placeholder: 'Ex: R$ 5.000/mês em Meta Ads. Gerenciado por uma agência sem especialização em saúde.' },
+  trafego_investimento: { label: 'Investe em tráfego pago? Quanto?', placeholder: 'Ex: R$ 5.000/mês em Meta Ads.' },
   trafego_criativos: { label: 'Como são os criativos e a oferta', placeholder: 'Ex: Imagens de stock genéricas. Nenhum vídeo. Copy focado em desconto.' },
   trafego_remarketing: { label: 'Usa remarketing? Como?', placeholder: 'Ex: Não. Leads que não converteram são descartados.' },
-  trafego_cpl: { label: 'Sabe o custo por lead (CPL)?', placeholder: 'Ex: Não mensura. Paga a agência e não sabe quantos leads vieram.' },
+  trafego_cpl: { label: 'Sabe o custo por lead (CPL)?', placeholder: 'Ex: Não mensura.' },
   demanda_previsibilidade: { label: 'A geração de leads é previsível?', placeholder: 'Ex: Oscila muito. Setembro foi bom, outubro veio quase nada.' },
   demanda_origem: { label: 'De onde vêm os leads? Proporção', placeholder: 'Ex: 60% indicação, 30% Instagram orgânico, 10% anúncio pago.' },
   demanda_qualificacao: { label: 'Tem sistema de qualificação de leads?', placeholder: 'Ex: Não. Tudo cai no WhatsApp da secretária.' },
   // Etapa 3 — Atendimento
-  atend_tempoResposta: { label: 'Qual o tempo médio de resposta a novos contatos?', placeholder: 'Ex: Entre 2 e 4 horas. Fora do horário comercial não há cobertura.' },
+  atend_tempoResposta: { label: 'Qual o tempo médio de resposta a novos contatos?', placeholder: 'Ex: Entre 2 e 4 horas.' },
   atend_cobertura: { label: 'Há cobertura fora do horário comercial?', placeholder: 'Ex: Não. Mensagens recebidas à noite são respondidas no dia seguinte.' },
-  atend_humanizacao: { label: 'A comunicação é humanizada e personalizada?', placeholder: 'Ex: Parcialmente. A secretária usa o nome do paciente, mas segue um padrão mecânico.' },
-  atend_geraValor: { label: 'A equipe gera valor além de informar preço?', placeholder: 'Ex: Não. O primeiro contato é: "O procedimento custa R$ X. Quer agendar?"' },
+  atend_humanizacao: { label: 'A comunicação é humanizada e personalizada?', placeholder: 'Ex: Parcialmente. A secretária usa o nome do paciente.' },
+  atend_geraValor: { label: 'A equipe gera valor além de informar preço?', placeholder: 'Ex: Não. O primeiro contato é: "O procedimento custa R$ X."' },
   atend_script: { label: 'Usa script estruturado de atendimento?', placeholder: 'Ex: Não tem script. Cada secretária atende de um jeito.' },
-  atend_objecoes: { label: 'Como lida com objeções de preço e dúvidas?', placeholder: 'Ex: Se o paciente diz que está caro, a secretária não sabe o que responder.' },
+  atend_objecoes: { label: 'Como lida com objeções de preço e dúvidas?', placeholder: 'Ex: Se o paciente diz que está caro, não sabe o que responder.' },
   atend_followup: { label: 'Faz follow-up com leads que não agendaram?', placeholder: 'Ex: Não. Se o paciente sumiu, a clínica não retoma o contato.' },
-  atend_taxaAgendamento: { label: 'Taxa de conversão de leads em agendamentos', placeholder: 'Ex: Estimamos 15–20%, mas não mensuramos com precisão.' },
-  atend_taxaComparecimento: { label: 'Taxa de comparecimento dos agendados', placeholder: 'Ex: Cerca de 70%. As faltas não são trabalhadas com confirmação ativa.' },
-  atend_taxaConversaoConsulta: { label: 'Taxa de conversão da consulta em cirurgia', placeholder: 'Ex: 40–50% das consultas viram cirurgia. O médico converte bem na cadeira.' },
-  atend_posVenda: { label: 'Tem processo de pós-venda e retenção?', placeholder: 'Ex: Não. Depois da cirurgia, o paciente não recebe nenhum contato estruturado.' },
+  atend_taxaAgendamento: { label: 'Taxa de conversão de leads em agendamentos', placeholder: 'Ex: 20', format: 'percent', type: 'input' },
+  atend_taxaComparecimento: { label: 'Taxa de comparecimento dos agendados', placeholder: 'Ex: 70', format: 'percent', type: 'input' },
+  atend_taxaConversaoConsulta: { label: 'Taxa de conversão da consulta em cirurgia', placeholder: 'Ex: 45', format: 'percent', type: 'input' },
+  atend_posVenda: { label: 'Tem processo de pós-venda e retenção?', placeholder: 'Ex: Não. Depois da cirurgia, nenhum contato estruturado.' },
 };
 
 const STEP_BLOCKS: Record<number, { title: string; fields: string[] }[]> = {
@@ -70,23 +72,68 @@ const STEP_BLOCKS: Record<number, { title: string; fields: string[] }[]> = {
   ],
 };
 
+const formatCurrency = (value: string): string => {
+  const nums = value.replace(/\D/g, '');
+  if (!nums) return '';
+  const n = parseInt(nums, 10);
+  return n.toLocaleString('pt-BR');
+};
+
+const formatNumber = (value: string): string => {
+  return value.replace(/\D/g, '');
+};
+
+const formatPercent = (value: string): string => {
+  const nums = value.replace(/[^\d.,]/g, '').replace(',', '.');
+  if (!nums) return '';
+  // Allow decimal percentages like 10.5
+  const match = nums.match(/^(\d+\.?\d{0,2})/);
+  return match ? match[1].replace('.', ',') : '';
+};
+
 const FormPhase = ({ onSubmit }: FormPhaseProps) => {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(getEmptyFormData());
+  const topRef = useRef<HTMLDivElement>(null);
 
   const currentFields = STEP_FIELDS[step] || [];
-  const allFilled = currentFields.every((f) => data[f].trim().length >= 3);
+  const allFilled = currentFields.every((f) => {
+    const config = FIELD_CONFIG[f];
+    const val = data[f].trim();
+    if (config?.format === 'currency' || config?.format === 'number' || config?.format === 'percent') {
+      return val.length >= 1;
+    }
+    return val.length >= 3;
+  });
   const totalSteps = 4;
   const progress = ((step + 1) / totalSteps) * 100;
 
-  const handleChange = (field: keyof FormData, value: string) => {
-    setData((prev) => ({ ...prev, [field]: value }));
+  const handleChange = (field: keyof FormData, value: string, format?: FieldFormat) => {
+    let formatted = value;
+    if (format === 'currency') {
+      formatted = formatCurrency(value);
+    } else if (format === 'number') {
+      formatted = formatNumber(value);
+    } else if (format === 'percent') {
+      formatted = formatPercent(value);
+    }
+    setData((prev) => ({ ...prev, [field]: formatted }));
+  };
+
+  const scrollToTop = () => {
+    if (topRef.current) {
+      topRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Also handle iframe scroll
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   const handleNext = () => {
     if (step < 3) {
       setStep(step + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(scrollToTop, 50);
     } else {
       onSubmit(data);
     }
@@ -95,9 +142,80 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
   const stepInfo = FORM_STEPS[step];
   const blocks = STEP_BLOCKS[step];
 
+  const renderInput = (field: string, config: typeof FIELD_CONFIG[string], key: keyof FormData) => {
+    const format = config.format || 'text';
+
+    if (format === 'currency') {
+      return (
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">R$</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={data[key]}
+            onChange={(e) => handleChange(key, e.target.value, 'currency')}
+            placeholder={config.placeholder}
+            className="w-full border border-border rounded-lg pl-11 pr-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors"
+          />
+        </div>
+      );
+    }
+
+    if (format === 'percent') {
+      return (
+        <div className="relative">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={data[key]}
+            onChange={(e) => handleChange(key, e.target.value, 'percent')}
+            placeholder={config.placeholder}
+            className="w-full border border-border rounded-lg px-4 pr-10 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors"
+          />
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">%</span>
+        </div>
+      );
+    }
+
+    if (format === 'number') {
+      return (
+        <input
+          type="text"
+          inputMode="numeric"
+          value={data[key]}
+          onChange={(e) => handleChange(key, e.target.value, 'number')}
+          placeholder={config.placeholder}
+          className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors"
+        />
+      );
+    }
+
+    // Text input or textarea
+    if (config.type === 'input') {
+      return (
+        <input
+          type="text"
+          value={data[key]}
+          onChange={(e) => handleChange(key, e.target.value)}
+          placeholder={config.placeholder}
+          className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors"
+        />
+      );
+    }
+
+    return (
+      <textarea
+        value={data[key]}
+        onChange={(e) => handleChange(key, e.target.value)}
+        placeholder={config.placeholder}
+        className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors min-h-[80px] resize-y"
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4 py-12">
-      <div className="w-full max-w-[760px] bg-card rounded-2xl shadow-2xl overflow-hidden">
+      <div ref={topRef} className="w-full max-w-[760px] bg-card rounded-2xl shadow-2xl overflow-hidden">
         {/* Progress bar */}
         <div className="h-1 bg-border">
           <div
@@ -141,22 +259,7 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
                         <label className="block text-[13px] font-semibold text-foreground mb-1.5">
                           {config.label}
                         </label>
-                        {config.type === 'input' ? (
-                          <input
-                            type="text"
-                            value={data[key]}
-                            onChange={(e) => handleChange(key, e.target.value)}
-                            placeholder={config.placeholder}
-                            className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors"
-                          />
-                        ) : (
-                          <textarea
-                            value={data[key]}
-                            onChange={(e) => handleChange(key, e.target.value)}
-                            placeholder={config.placeholder}
-                            className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors min-h-[80px] resize-y"
-                          />
-                        )}
+                        {renderInput(field, config, key)}
                       </div>
                     );
                   })}
@@ -177,7 +280,7 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
 
             {step > 0 && (
               <button
-                onClick={() => { setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={() => { setStep(step - 1); setTimeout(scrollToTop, 50); }}
                 className="w-full flex items-center justify-center gap-1 text-muted-foreground hover:text-foreground text-sm py-2 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" /> Etapa anterior
