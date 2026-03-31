@@ -9,6 +9,7 @@ import PilarCard from './PilarCard';
 import FunnelChart from './FunnelChart';
 import DashboardBI from './DashboardBI';
 import ExportPDF from './ExportPDF';
+import ProductCatalog from './ProductCatalog';
 
 interface ReportPhaseProps {
   relatorio: Relatorio;
