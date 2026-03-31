@@ -16,7 +16,8 @@ interface ReportPhaseProps {
 }
 
 const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
-  const { financeiro, pilares, nomeClinica, especialidade, cidade } = relatorio;
+  const { financeiro, pilares, nomeClinica, especialidade, cidade, nivelRecomendado } = relatorio;
+  const retornoEstimado = financeiro.faturamentoPerdidoMes * 3;
   const animPerdidoMes = useCountUp(financeiro.faturamentoPerdidoMes, 2000);
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
