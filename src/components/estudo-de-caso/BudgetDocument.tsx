@@ -91,8 +91,8 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
         ))}
       </div>
 
-      {/* Implementation Scope */}
-      <div className="mb-10">
+      {/* Implementation Scope — always on a new page */}
+      <div className="mb-10" style={{ breakBefore: 'page', pageBreakBefore: 'always' }}>
         <h2 className="text-lg font-bold mb-2 pb-2 border-b border-gray-200">Plano de Ação — Implementação (90 dias)</h2>
         <p className="text-sm text-gray-500 mb-4">Objetivo: estruturar a operação comercial do cliente do zero.</p>
         <table className="w-full border-collapse">
