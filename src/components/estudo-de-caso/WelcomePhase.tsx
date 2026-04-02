@@ -16,19 +16,19 @@ const WelcomePhase = ({ onStart }: WelcomePhaseProps) => {
         </span>
 
         <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3 font-display">
-          Diagnóstico Estratégico de Clínica
+          Estudo de Caso
         </h1>
 
         <p className="text-muted-foreground font-body text-sm md:text-base mb-8 max-w-md mx-auto">
-          Preencha os dados da clínica e gere um relatório visual completo para apresentar ao cliente.
+          Preencha os dados da clínica e gere um estudo completo para apresentar ao cliente.
         </p>
 
         <div className="space-y-3 text-left max-w-sm mx-auto mb-10">
           {[
-            'Análise por 3 pilares',
-            'Mapeamento de gargalos',
+            'Análise por 3 pilares (30 indicadores)',
+            'Mapeamento de gargalos operacionais',
             'Narrativa de venda estruturada',
-            'Relatório PDF com logo GD Co.',
+            'Orçamento PDF com logo GD Co.',
           ].map((item) => (
             <div key={item} className="flex items-center gap-3">
               <CheckCircle className="h-5 w-5 text-primary flex-shrink-0" />
@@ -41,7 +41,7 @@ const WelcomePhase = ({ onStart }: WelcomePhaseProps) => {
           onClick={onStart}
           className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-semibold py-4 px-6 rounded-xl text-base transition-colors"
         >
-          → INICIAR DIAGNÓSTICO
+          INICIAR ESTUDO DE CASO
         </button>
       </div>
     </div>
