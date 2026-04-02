@@ -12,30 +12,25 @@ const ExportPDF = ({ targetId, filename }: ExportPDFProps) => {
   const [loading, setLoading] = useState(false);
 
   const handleExport = useCallback(async () => {
-    const element = document.getElementById(targetId);
-    if (!element) return;
-
     setLoading(true);
 
     try {
-      const element = document.getElementById(targetId);
-      const budgetEl = document.getElementById('report-budget');
-      if (!element) return;
+      const budgetEl = document.getElementById(targetId);
+      if (!budgetEl) return;
 
       // Temporarily show budget element for capture
-      if (budgetEl) budgetEl.classList.remove('hidden');
+      budgetEl.classList.remove('hidden');
 
-      const captureElement = async (el: HTMLElement) => {
-        return html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#FFFFFF',
-          windowWidth: 1200,
-        });
-      };
+      const canvas = await html2canvas(budgetEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#FFFFFF',
+        windowWidth: 900,
+      });
 
-      const canvas = await captureElement(element);
+      budgetEl.classList.add('hidden');
+
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -43,7 +38,6 @@ const ExportPDF = ({ targetId, filename }: ExportPDFProps) => {
       const contentWidth = pageWidth - margin * 2;
       const availableHeight = pageHeight - margin * 2;
 
-      // Add main report pages
       const ratio = contentWidth / canvas.width;
       const scaledHeight = canvas.height * ratio;
       const imgData = canvas.toDataURL('image/png');
@@ -53,18 +47,6 @@ const ExportPDF = ({ targetId, filename }: ExportPDFProps) => {
         if (yOffset > 0) pdf.addPage();
         pdf.addImage(imgData, 'PNG', margin, margin - yOffset, contentWidth, scaledHeight);
         yOffset += availableHeight;
-      }
-
-      // Add budget page (only recommended product)
-      if (budgetEl) {
-        const budgetCanvas = await captureElement(budgetEl);
-        const budgetImgData = budgetCanvas.toDataURL('image/png');
-        const budgetRatio = contentWidth / budgetCanvas.width;
-        const budgetScaledHeight = budgetCanvas.height * budgetRatio;
-
-        pdf.addPage();
-        pdf.addImage(budgetImgData, 'PNG', margin, margin, contentWidth, budgetScaledHeight);
-        budgetEl.classList.add('hidden');
       }
 
       pdf.save(`${filename}.pdf`);
@@ -86,7 +68,7 @@ const ExportPDF = ({ targetId, filename }: ExportPDFProps) => {
       ) : (
         <Download className="h-4 w-4" />
       )}
-      {loading ? 'Gerando PDF...' : 'Exportar Relatório'}
+      {loading ? 'Gerando PDF...' : 'Baixar Orçamento'}
     </button>
   );
 };

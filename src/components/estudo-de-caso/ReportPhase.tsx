@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend, ReferenceLine } from 'recharts';
 import logoGd from '@/assets/logo-gd.png';
 import type { Relatorio } from './types';
@@ -10,6 +10,7 @@ import FunnelChart from './FunnelChart';
 import DashboardBI from './DashboardBI';
 import ExportPDF from './ExportPDF';
 import ProductCatalog from './ProductCatalog';
+import BudgetDocument from './BudgetDocument';
 
 interface ReportPhaseProps {
   relatorio: Relatorio;
@@ -45,7 +46,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           <div className="flex items-center justify-center gap-3 mb-8">
             <img src={logoGd} alt="GD Co." className="h-8 w-8 rounded" />
             <span className="text-[10px] tracking-[0.25em] uppercase text-primary-foreground/40 font-display">
-              Diagnóstico Estratégico
+              Estudo de Caso
             </span>
           </div>
 
@@ -70,15 +71,14 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
 
       {/* Export bar */}
       <div className="bg-background py-5 px-4 flex justify-center border-b border-border">
-        <ExportPDF targetId="report-content" filename={`diagnostico-${nomeClinica.toLowerCase().replace(/\s+/g, '-')}`} />
+        <ExportPDF targetId="budget-document" filename={`orcamento-${nomeClinica.toLowerCase().replace(/\s+/g, '-')}`} />
       </div>
 
-      {/* Exportable content wrapper */}
+      {/* Report content */}
       <div id="report-content">
-        {/* DASHBOARD B.I. */}
         <DashboardBI relatorio={relatorio} />
 
-        {/* SECTION A — Gauges */}
+        {/* Gauges */}
         <section className="bg-card py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Análise Tripartida</p>
@@ -91,7 +91,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION B — Pillar Analysis */}
+        {/* Pillar Analysis */}
         <section className="bg-background py-14 px-4">
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="mb-4">
@@ -104,7 +104,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION C — Funnel */}
+        {/* Funnel */}
         <section className="bg-card py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Mapeamento de Conversão</p>
@@ -118,7 +118,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION D — Financial Impact */}
+        {/* Financial Impact */}
         <section className="bg-surface-dark py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-1 text-center">Impacto Financeiro</p>
@@ -159,7 +159,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION E — Radar */}
+        {/* Radar */}
         <section className="bg-card py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Maturidade Operacional</p>
@@ -179,7 +179,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION F — Comparative */}
+        {/* Comparative Table */}
         <section className="bg-background py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Análise Comparativa</p>
@@ -214,7 +214,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION G — Before/After */}
+        {/* Before/After */}
         <section className="bg-surface-dark py-14 px-4">
           <div className="max-w-3xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -232,15 +232,13 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* SECTION H — Product Catalog (visible on screen, hidden in PDF) */}
-        <div className="print-hide">
-          <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} />
-        </div>
+        {/* Product Catalog (on-screen only) */}
+        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} />
       </div>
 
-      {/* PDF-only: recommended product as budget (hidden on screen, included in PDF export) */}
-      <div id="report-budget" className="hidden">
-        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} onlyRecommended />
+      {/* Hidden budget document for PDF export */}
+      <div id="budget-document" className="hidden">
+        <BudgetDocument relatorio={relatorio} />
       </div>
 
       {/* Footer */}

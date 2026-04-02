@@ -1,18 +1,24 @@
-import type { FormData, Relatorio, PilarAnalise, PontoAnalise } from './types';
+import type { FormData, Relatorio, PilarAnalise, PontoAnalise, AnswerLetter, Urgencia } from './types';
+import { QUESTIONS_POSICIONAMENTO, QUESTIONS_PERFORMANCE, QUESTIONS_ATENDIMENTO } from './types';
 
 function extrairNumeroDoTexto(texto: string): number {
-  const cleaned = texto.replace(/[R$.\s]/g, '').replace(',', '.');
-  const match = cleaned.match(/\d+/);
-  return match ? parseInt(match[0]) : 0;
+  const cleaned = texto.replace(/[R$.\s%]/g, '').replace(',', '.');
+  const match = cleaned.match(/[\d.]+/);
+  return match ? parseFloat(match[0]) : 0;
+}
+
+const LETTER_SCORE: Record<string, number> = { A: 0, B: 25, C: 50, D: 75, E: 100 };
+
+function letterToScore(letter: AnswerLetter): number {
+  return LETTER_SCORE[letter] ?? 0;
 }
 
 export function calcularFinanceiro(r: FormData) {
   const ticketMedio = extrairNumeroDoTexto(r.ticketMedio) || 5000;
   const procedimentosMes = extrairNumeroDoTexto(r.procedimentosMes) || 10;
   const faturamentoAtualNum = extrairNumeroDoTexto(r.faturamentoAtual) || (procedimentosMes * ticketMedio);
-
-  const matchPct = r.taxaConversao.match(/(\d+)%/);
-  const taxaConversaoAtual = matchPct ? parseInt(matchPct[1]) / 100 : 0.08;
+  const taxaConversaoRaw = extrairNumeroDoTexto(r.taxaConversao);
+  const taxaConversaoAtual = taxaConversaoRaw > 0 ? taxaConversaoRaw / 100 : 0.08;
 
   const leadsMesEstimado = Math.round(procedimentosMes / taxaConversaoAtual);
   const taxaConversaoPotencial = 0.35;
@@ -25,248 +31,346 @@ export function calcularFinanceiro(r: FormData) {
   return {
     faturamentoAtual: r.faturamentoAtual,
     faturamentoDesejado: r.faturamentoDesejado,
-    ticketMedio,
-    procedimentosMes,
-    taxaConversaoAtual,
-    taxaConversaoPotencial,
-    leadsMesEstimado,
-    cirurgiasAtuais,
-    cirurgiasPotencial,
-    cirurgiasPerdidas,
-    faturamentoPerdidoMes,
-    faturamentoPerdidoAno,
-    faturamentoAtualNum,
+    ticketMedio, procedimentosMes, taxaConversaoAtual, taxaConversaoPotencial,
+    leadsMesEstimado, cirurgiasAtuais, cirurgiasPotencial, cirurgiasPerdidas,
+    faturamentoPerdidoMes, faturamentoPerdidoAno, faturamentoAtualNum,
   };
 }
 
-function analisarPosicionamento(r: FormData): PilarAnalise {
-  const positivos: PontoAnalise[] = [];
-  const negativos: PontoAnalise[] = [];
-  let score = 50;
+// ── Analysis point definitions per question ──
+// Each maps answer A/B → negative, D/E → positive
 
-  const temBoaNota = /4\.[5-9]|5\.0|4,5|4,6|4,7|4,8|4,9/.test(r.gmb_status);
-  const temMuitasAvaliacoes = /\d{3,}/.test(r.gmb_status);
-  const ignoraAvaliacoes = /raramente|não|nunca|sem resposta/i.test(r.gmb_avaliacoes);
-
-  if (temBoaNota) {
-    score += 8;
-    positivos.push({ titulo: "Boa reputação no Google", descricao: "Nota acima de 4.5 no Google Meu Negócio indica que os pacientes que chegam até a consulta saem satisfeitos. Isso é um ativo de confiança que pode ser mais explorado na comunicação e nos anúncios." });
-  } else {
-    score -= 10;
-    negativos.push({ titulo: "Nota Google abaixo do ideal", descricao: "Notas abaixo de 4.5 geram desconfiança antes mesmo do primeiro contato. Em cirurgia plástica, onde a decisão envolve alto investimento e risco emocional, o paciente pesquisa exaustivamente antes de agir.", impacto: "Pacientes qualificados descartam a clínica antes de entrar em contato.", urgencia: 'alta' });
-  }
-
-  if (temMuitasAvaliacoes) {
-    score += 5;
-    positivos.push({ titulo: "Volume expressivo de avaliações", descricao: "Mais de 100 avaliações conferem autoridade e prova social que nenhum anúncio consegue replicar. Esse volume reduz a fricção da decisão." });
-  }
-
-  if (ignoraAvaliacoes) {
-    score -= 8;
-    negativos.push({ titulo: "Avaliações negativas sem resposta", descricao: "Não responder avaliações — especialmente as negativas — sinaliza descaso ao público que ainda está avaliando a clínica. Uma resposta profissional transforma uma crítica em demonstração de cuidado.", impacto: "Cada avaliação negativa sem resposta afasta em média 3 novos pacientes.", urgencia: 'media' });
-  }
-
-  const temSiteRuim = /2021|2020|antigo|desatualizado|não responsivo|lento|wordpress/i.test(r.site_status);
-  const temSiteBom = /moderno|profissional|responsivo|rápido/i.test(r.site_status);
-  const semCTA = /não tem|sem cta|escondido|nenhum formulário/i.test(r.site_cta);
-
-  if (temSiteRuim) {
-    score -= 12;
-    negativos.push({ titulo: "Site desatualizado ou não responsivo", descricao: "Um site com design antigo ou que não funciona bem no mobile transmite descuido antes mesmo da consulta. Em 2026, mais de 75% das buscas por cirurgias estéticas acontecem no celular.", impacto: "Pacientes de alto valor descartam clínicas com presença digital amadora.", urgencia: 'alta' });
-  }
-
-  if (semCTA) {
-    score -= 8;
-    negativos.push({ titulo: "CTAs de contato invisíveis ou ausentes", descricao: "Se o botão de agendamento não está evidente no site, o paciente que chegou qualificado vai embora sem deixar contato.", impacto: "Taxa de conversão do site cai pela metade sem CTA claro acima da dobra.", urgencia: 'alta' });
-  }
-
-  if (temSiteBom) {
-    score += 7;
-    positivos.push({ titulo: "Presença digital com base sólida", descricao: "Ter um site moderno e responsivo posiciona a clínica acima de grande parte dos concorrentes regionais que ainda operam com presença digital básica." });
-  }
-
-  const postaPouco = /não post|1 vez|raramente|sem padrão/i.test(r.social_frequencia);
-  const naoUsaProvas = /não|raramente|nunca|medo/i.test(r.social_provas);
-  const usaProvas = /sim|usa|depoimento|antes.*depois/i.test(r.social_provas);
-  const bioPobre = /genérica|sem cta|crm|apenas|só o/i.test(r.social_bio);
-
-  if (postaPouco) {
-    score -= 8;
-    negativos.push({ titulo: "Frequência insuficiente nas redes sociais", descricao: "Com menos de 3 posts semanais, o algoritmo do Instagram penaliza o alcance orgânico. O paciente em fase de pesquisa precisa ver a clínica com frequência antes de tomar a decisão de contato.", impacto: "Baixa frequência = baixo alcance orgânico = menos leads sem pagar.", urgencia: 'media' });
-  }
-
-  if (naoUsaProvas && !usaProvas) {
-    score -= 10;
-    negativos.push({ titulo: "Ausência de provas sociais na comunicação", descricao: "Depoimentos e resultados reais são o principal gatilho de decisão para procedimentos estéticos de alto valor. Sem eles, a comunicação é apenas informativa — não persuasiva.", impacto: "O paciente não percebe diferença entre esta clínica e qualquer outra do feed.", urgencia: 'alta' });
-  }
-
-  if (usaProvas) {
-    score += 10;
-    positivos.push({ titulo: "Uso de provas sociais e resultados reais", descricao: "Publicar depoimentos e resultados de pacientes (com autorização) é o conteúdo com maior taxa de conversão em clínicas de cirurgia plástica." });
-  }
-
-  if (bioPobre) {
-    score -= 5;
-    negativos.push({ titulo: "Bio sem direcionamento estratégico", descricao: "A bio é o primeiro lugar que um novo visitante lê. Uma bio genérica com apenas CRM e especialidade desperdiça o único campo que pode transformar visitante em lead.", impacto: "Bio sem CTA reduz em até 40% a taxa de cliques para contato.", urgencia: 'media' });
-  }
-
-  const semPublicoDefinido = /não há|qualquer|sem segmentação|genérico/i.test(r.posicao_publicoAlvo);
-  const semDiferencial = /não comunicado|não sabe|nenhum|não há/i.test(r.posicao_diferencial);
-
-  if (semPublicoDefinido) {
-    score -= 10;
-    negativos.push({ titulo: "Público-alvo não definido na comunicação", descricao: "Comunicar para todos é comunicar para ninguém. Clínicas de alto valor precisam de mensagens que ressoem com um perfil específico de paciente.", impacto: "Atrai pacientes fora do perfil ideal, sobrecarregando o comercial com leads não qualificados.", urgencia: 'alta' });
-  }
-
-  if (semDiferencial) {
-    score -= 8;
-    negativos.push({ titulo: "Diferencial competitivo não visível ao mercado", descricao: "Ter excelência técnica sem comunicá-la é como não tê-la. Se o paciente não consegue articular por que escolheria esta clínica antes da consulta, a decisão cairá exclusivamente no preço.", impacto: "Competir por preço reduz margens e atrai o perfil errado de paciente.", urgencia: 'alta' });
-  }
-
-  score = Math.max(20, Math.min(70, score));
-  const status = score >= 55 ? 'warning' as const : 'critical' as const;
-  return { score, status, positivos, negativos };
+interface QAnalysis {
+  id: string;
+  negTitle: string;
+  negDescA: string;
+  negDescB: string;
+  negImpact: string;
+  negUrgency: Urgencia;
+  posTitle: string;
+  posDesc: string;
 }
 
-function analisarPerformance(r: FormData): PilarAnalise {
+const POSICIONAMENTO_ANALYSIS: QAnalysis[] = [
+  {
+    id: 'q1', negTitle: 'Perfil no Google Meu Negócio inexistente ou não verificado',
+    negDescA: 'A clínica não possui perfil no Google Meu Negócio. Isso elimina completamente a visibilidade em buscas locais, onde a maioria dos pacientes inicia a pesquisa.',
+    negDescB: 'O perfil no Google existe mas não está verificado, limitando o controle sobre informações exibidas e impedindo respostas a avaliações.',
+    negImpact: 'Pacientes que buscam a especialidade na região não encontram a clínica.',
+    negUrgency: 'alta',
+    posTitle: 'Perfil no Google bem posicionado',
+    posDesc: 'Perfil verificado com boas avaliações e gestão ativa. Isso gera confiança imediata para pacientes em fase de pesquisa.',
+  },
+  {
+    id: 'q2', negTitle: 'Fotos no Google ausentes ou de baixa qualidade',
+    negDescA: 'Não há fotos no perfil do Google. O paciente não consegue visualizar a estrutura, o que gera desconfiança antes do primeiro contato.',
+    negDescB: 'As fotos estão desatualizadas ou com qualidade amadora, transmitindo uma imagem que não corresponde ao nível da clínica.',
+    negImpact: 'Clínicas com fotos profissionais recebem 42% mais solicitações de rota e contato.',
+    negUrgency: 'media',
+    posTitle: 'Apresentação visual profissional no Google',
+    posDesc: 'Fotos de qualidade profissional transmitem credibilidade e elevam a percepção de valor da clínica.',
+  },
+  {
+    id: 'q3', negTitle: 'Avaliações negativas sem gestão',
+    negDescA: 'As avaliações negativas são completamente ignoradas, sinalizando descaso ao público que ainda está avaliando a clínica.',
+    negDescB: 'As respostas a avaliações são raras e sem padrão, desperdiçando a oportunidade de demonstrar profissionalismo.',
+    negImpact: 'Cada avaliação negativa sem resposta afasta potenciais pacientes que estão pesquisando.',
+    negUrgency: 'media',
+    posTitle: 'Gestão estratégica de reputação online',
+    posDesc: 'Respostas consistentes e profissionais às avaliações demonstram cuidado e transformam até críticas em prova de compromisso.',
+  },
+  {
+    id: 'q4', negTitle: 'Site inexistente ou desatualizado',
+    negDescA: 'A clínica não possui site. O paciente que pesquisa online não encontra informações institucionais, o que inviabiliza a construção de confiança.',
+    negDescB: 'O site é antigo e com experiência ruim, transmitindo uma imagem que contradiz o nível de excelência do serviço oferecido.',
+    negImpact: 'Mais de 75% das buscas por procedimentos estéticos acontecem no celular.',
+    negUrgency: 'alta',
+    posTitle: 'Presença digital profissional',
+    posDesc: 'Site moderno e otimizado que posiciona a clínica acima da maioria dos concorrentes regionais.',
+  },
+  {
+    id: 'q5', negTitle: 'CTAs de contato ausentes ou invisíveis',
+    negDescA: 'Não existem chamadas para ação no site. O paciente qualificado que chega ao site não tem caminho claro para entrar em contato.',
+    negDescB: 'Os CTAs existem mas são difíceis de encontrar, reduzindo drasticamente as conversões do site.',
+    negImpact: 'A taxa de conversão do site cai pela metade sem CTAs claros acima da dobra.',
+    negUrgency: 'alta',
+    posTitle: 'CTAs estratégicos e bem posicionados',
+    posDesc: 'Os pontos de contato estão visíveis e otimizados, facilitando a conversão do visitante em lead.',
+  },
+  {
+    id: 'q6', negTitle: 'Experiência do site comprometida',
+    negDescA: 'A experiência do site é muito ruim, gerando abandono imediato dos visitantes.',
+    negDescB: 'O site é lento, especialmente no mobile, onde a maioria dos pacientes pesquisa.',
+    negImpact: 'Cada segundo adicional de carregamento aumenta a taxa de abandono em 32%.',
+    negUrgency: 'media',
+    posTitle: 'Site com boa performance',
+    posDesc: 'Experiência de navegação fluida que mantém o visitante engajado até o contato.',
+  },
+  {
+    id: 'q7', negTitle: 'Frequência de conteúdo insuficiente',
+    negDescA: 'A clínica não publica conteúdo nas redes sociais, perdendo completamente o canal orgânico de aquisição.',
+    negDescB: 'As publicações são raras, fazendo com que o algoritmo penalize o alcance orgânico da conta.',
+    negImpact: 'Sem frequência mínima, o alcance orgânico é praticamente nulo.',
+    negUrgency: 'media',
+    posTitle: 'Conteúdo frequente e estratégico',
+    posDesc: 'A frequência de publicações mantém a clínica presente no feed do público-alvo, gerando familiaridade e confiança.',
+  },
+  {
+    id: 'q8', negTitle: 'Ausência de provas sociais na comunicação',
+    negDescA: 'A clínica não utiliza depoimentos ou resultados reais, eliminando o principal gatilho de decisão para procedimentos de alto valor.',
+    negDescB: 'O uso de provas sociais é esporádico e não faz parte da estratégia de conteúdo.',
+    negImpact: 'O paciente não percebe diferença entre esta clínica e as demais do mercado.',
+    negUrgency: 'alta',
+    posTitle: 'Provas sociais ativas na estratégia',
+    posDesc: 'Depoimentos e resultados reais são o conteúdo com maior taxa de conversão em clínicas de procedimentos estéticos.',
+  },
+  {
+    id: 'q9', negTitle: 'Bio das redes sem direcionamento',
+    negDescA: 'Não há bio configurada, desperdiçando o campo mais visto por novos visitantes do perfil.',
+    negDescB: 'A bio é genérica e não diferencia a clínica nem direciona o visitante para uma ação.',
+    negImpact: 'Bio sem CTA reduz em até 40% a taxa de cliques para contato.',
+    negUrgency: 'baixa',
+    posTitle: 'Bio estratégica com direcionamento claro',
+    posDesc: 'A bio comunica posicionamento e direciona o visitante para ação, convertendo visualizações em contatos.',
+  },
+  {
+    id: 'q10', negTitle: 'Público-alvo não definido',
+    negDescA: 'Não há definição de público-alvo. Comunicar para todos significa comunicar para ninguém.',
+    negDescB: 'O público-alvo é amplo demais, resultando em mensagens genéricas que não ressoam com nenhum perfil específico.',
+    negImpact: 'Atrai leads fora do perfil ideal, sobrecarregando o comercial com contatos que não convertem.',
+    negUrgency: 'alta',
+    posTitle: 'Público-alvo bem definido',
+    posDesc: 'A comunicação é direcionada para o perfil ideal de paciente, otimizando cada investimento em aquisição.',
+  },
+  {
+    id: 'q11', negTitle: 'Diferencial competitivo não percebido',
+    negDescA: 'A clínica não possui diferencial articulado. Sem isso, a decisão do paciente será exclusivamente por preço.',
+    negDescB: 'O diferencial é genérico e não se destaca da concorrência regional.',
+    negImpact: 'Competir por preço reduz margens e atrai o perfil errado de paciente.',
+    negUrgency: 'alta',
+    posTitle: 'Diferencial claro e valorizado',
+    posDesc: 'A clínica possui um diferencial percebido e valorizado pelo mercado, o que sustenta a precificação de alto valor.',
+  },
+  {
+    id: 'q12', negTitle: 'Promessa de valor ausente ou desconectada',
+    negDescA: 'A clínica não possui uma promessa de valor articulada. O paciente não sabe o que esperar além do procedimento técnico.',
+    negDescB: 'A promessa existe mas não é comunicada nos canais de contato, tornando-a invisível para o público.',
+    negImpact: 'Sem proposta de valor clara, a taxa de conversão depende exclusivamente do preço.',
+    negUrgency: 'media',
+    posTitle: 'Proposta de valor clara e consistente',
+    posDesc: 'A promessa de valor é comunicada de forma consistente em todos os pontos de contato, reforçando a decisão de compra.',
+  },
+];
+
+const PERFORMANCE_ANALYSIS: QAnalysis[] = [
+  {
+    id: 'q13', negTitle: 'Sem investimento em aquisição paga',
+    negDescA: 'A clínica não investe em tráfego pago, dependendo exclusivamente de indicação e orgânico. Isso cria um teto de crescimento.',
+    negDescB: 'O investimento é irregular, impossibilitando a construção de uma base previsível de leads.',
+    negImpact: 'Crescimento limitado e sem previsibilidade de demanda.',
+    negUrgency: 'alta',
+    posTitle: 'Investimento consistente em aquisição',
+    posDesc: 'A clínica investe de forma estruturada em mídia paga, o que possibilita previsibilidade e escala na geração de demanda.',
+  },
+  {
+    id: 'q14', negTitle: 'Criativos fracos ou inexistentes',
+    negDescA: 'A clínica não produz criativos para anúncios, limitando totalmente o alcance pago.',
+    negDescB: 'Os criativos são genéricos, sem conexão com o paciente ideal e sem diferenciação.',
+    negImpact: 'Leads desqualificados chegam em volume, sobrecarregando o atendimento sem conversão.',
+    negUrgency: 'alta',
+    posTitle: 'Criativos de alta qualidade',
+    posDesc: 'Os criativos são bem produzidos e conectam com o público-alvo, otimizando o custo por lead qualificado.',
+  },
+  {
+    id: 'q15', negTitle: 'Remarketing não utilizado',
+    negDescA: 'A clínica não utiliza remarketing. Leads que demonstraram interesse são completamente abandonados.',
+    negDescB: 'Já houve tentativa de remarketing, mas sem continuidade ou estrutura.',
+    negImpact: 'CPL 2–3x mais caro por não recuperar interesse já demonstrado.',
+    negUrgency: 'media',
+    posTitle: 'Remarketing estruturado',
+    posDesc: 'O remarketing recupera leads quentes com custo de conversão significativamente menor.',
+  },
+  {
+    id: 'q16', negTitle: 'Métricas de aquisição não mensuradas',
+    negDescA: 'A clínica não mede o custo por lead. Investir em mídia sem saber o CPL é como dirigir sem painel.',
+    negDescB: 'A mensuração é esporádica e não permite otimização consistente das campanhas.',
+    negImpact: 'Investimento em mídia sem controle de retorno torna impossível otimizar.',
+    negUrgency: 'alta',
+    posTitle: 'Controle de métricas ativo',
+    posDesc: 'O acompanhamento constante do CPL e outras métricas permite otimização contínua do investimento.',
+  },
+  {
+    id: 'q17', negTitle: 'Geração de leads imprevisível',
+    negDescA: 'A clínica não gera leads de forma ativa, dependendo totalmente de demanda espontânea.',
+    negDescB: 'A geração de leads é totalmente instável, com meses bons seguidos de meses fracos.',
+    negImpact: 'Sem previsibilidade, é impossível planejar agenda e recursos de forma eficiente.',
+    negUrgency: 'alta',
+    posTitle: 'Previsibilidade de demanda',
+    posDesc: 'A geração de leads é estável e previsível, permitindo planejamento operacional consistente.',
+  },
+  {
+    id: 'q18', negTitle: 'Origem dos leads desconhecida ou concentrada',
+    negDescA: 'A clínica não sabe de onde vêm os leads, impossibilitando qualquer decisão baseada em dados.',
+    negDescB: 'A demanda vem exclusivamente de indicação, criando dependência de um canal que não escala.',
+    negImpact: 'Decisões de investimento são feitas às cegas.',
+    negUrgency: 'media',
+    posTitle: 'Canais de aquisição mapeados',
+    posDesc: 'A origem dos leads é conhecida e mensurada, possibilitando decisões estratégicas de investimento por canal.',
+  },
+  {
+    id: 'q19', negTitle: 'Leads não são qualificados',
+    negDescA: 'Não existe nenhum sistema de qualificação. Todos os leads recebem o mesmo tratamento, independente do perfil.',
+    negDescB: 'A qualificação é muito básica e não separa leads por potencial de conversão.',
+    negImpact: 'A equipe gasta o mesmo tempo com leads de baixo e alto valor.',
+    negUrgency: 'alta',
+    posTitle: 'Qualificação de leads estruturada',
+    posDesc: 'O sistema de qualificação prioriza leads com maior potencial, otimizando o tempo da equipe comercial.',
+  },
+];
+
+const ATENDIMENTO_ANALYSIS: QAnalysis[] = [
+  {
+    id: 'q20', negTitle: 'Tempo de resposta acima do aceitável',
+    negDescA: 'O tempo de resposta ultrapassa 6 horas. A chance de converter um lead cai 80% após os primeiros 5 minutos.',
+    negDescB: 'O tempo de resposta de 2–6 horas permite que o paciente avalie concorrentes antes de receber retorno.',
+    negImpact: 'A maioria dos leads qualificados é perdida permanentemente pela demora.',
+    negUrgency: 'alta',
+    posTitle: 'Agilidade no primeiro contato',
+    posDesc: 'Responder rapidamente posiciona a clínica como referência de cuidado desde o primeiro contato.',
+  },
+  {
+    id: 'q21', negTitle: 'Sem cobertura fora do horário comercial',
+    negDescA: 'Não existe atendimento fora do horário comercial. A maioria das pesquisas por procedimentos acontece à noite e fins de semana.',
+    negDescB: 'A cobertura fora do horário é muito limitada, deixando a maioria dos contatos noturnos sem resposta.',
+    negImpact: '30–40% dos leads chegam fora do horário e não são aproveitados.',
+    negUrgency: 'alta',
+    posTitle: 'Cobertura de atendimento ampla',
+    posDesc: 'O atendimento cobre os horários de pico de pesquisa, garantindo que nenhum lead qualificado fique sem resposta.',
+  },
+  {
+    id: 'q22', negTitle: 'Comunicação impessoal',
+    negDescA: 'A comunicação é fria e não estabelece conexão com o paciente, reduzindo a taxa de conversão.',
+    negDescB: 'Há pouca personalização no atendimento, tratando todos os leads de forma padronizada e distante.',
+    negImpact: 'Pacientes de alto valor esperam uma experiência personalizada desde o primeiro contato.',
+    negUrgency: 'media',
+    posTitle: 'Comunicação personalizada e humanizada',
+    posDesc: 'O atendimento personalizado gera conexão emocional e eleva a percepção de cuidado.',
+  },
+  {
+    id: 'q23', negTitle: 'Atendimento focado exclusivamente em preço',
+    negDescA: 'O atendimento se resume a informar o valor do procedimento. A conversa vira comparação de preços.',
+    negDescB: 'O foco principal é preço, com pouca ou nenhuma geração de valor percebido antes da consulta.',
+    negImpact: 'O paciente compara valores e escolhe pelo preço, não pela qualidade.',
+    negUrgency: 'alta',
+    posTitle: 'Atendimento consultivo e persuasivo',
+    posDesc: 'A equipe gera valor percebido antes de apresentar o investimento, sustentando a precificação premium.',
+  },
+  {
+    id: 'q24', negTitle: 'Atendimento sem padronização',
+    negDescA: 'Não existe script de atendimento. A qualidade da conversão depende exclusivamente de quem atende no dia.',
+    negDescB: 'Cada profissional atende de forma diferente, tornando impossível otimizar o processo.',
+    negImpact: 'Taxa de conversão oscila sem explicação. O que não é padronizado não pode ser otimizado.',
+    negUrgency: 'alta',
+    posTitle: 'Script estruturado e otimizado',
+    posDesc: 'O atendimento segue um protocolo otimizado que garante consistência na conversão.',
+  },
+  {
+    id: 'q25', negTitle: 'Objeções não são tratadas',
+    negDescA: 'A equipe não sabe lidar com objeções de preço e dúvidas, perdendo leads que estavam próximos de converter.',
+    negDescB: 'As objeções são evitadas ao invés de tratadas, deixando o paciente sem resposta para suas preocupações.',
+    negImpact: 'Leads qualificados são perdidos por falta de preparo comercial.',
+    negUrgency: 'alta',
+    posTitle: 'Tratamento estratégico de objeções',
+    posDesc: 'A equipe transforma objeções em oportunidades de demonstrar valor e fechar a venda.',
+  },
+  {
+    id: 'q26', negTitle: 'Ausência de follow-up estruturado',
+    negDescA: 'A clínica nunca retoma contato com leads que não agendaram. 80% das vendas de alto valor acontecem após o 5º contato.',
+    negDescB: 'O follow-up é raro e sem estrutura, abandonando leads que precisavam de mais pontos de contato.',
+    negImpact: 'Leads interessados são perdidos por falta de persistência estruturada.',
+    negUrgency: 'alta',
+    posTitle: 'Follow-up sempre estruturado',
+    posDesc: 'A retomada consistente de contato com leads garante máximo aproveitamento de cada oportunidade.',
+  },
+  {
+    id: 'q27', negTitle: 'Taxa de conversão em agendamento muito baixa',
+    negDescA: 'Menos de 10% dos leads viram agendamento. A maioria dos contatos é perdida antes de chegar à consulta.',
+    negDescB: 'Taxa de 10–20% de conversão em agendamento indica gargalos sérios no processo comercial.',
+    negImpact: 'Grande volume de leads gerados não se converte em consultas.',
+    negUrgency: 'alta',
+    posTitle: 'Boa taxa de conversão em agendamento',
+    posDesc: 'A taxa de agendamento acima de 30% indica eficiência no processo de qualificação e convencimento.',
+  },
+  {
+    id: 'q28', negTitle: 'Taxa de comparecimento baixa',
+    negDescA: 'Menos de 50% dos agendados comparecem. A agenda da clínica é imprevisível.',
+    negDescB: 'Taxa de 50–60% de comparecimento indica falta de protocolos de confirmação e lembretes.',
+    negImpact: 'Horários vagos na agenda representam receita perdida.',
+    negUrgency: 'media',
+    posTitle: 'Alto comparecimento nas consultas',
+    posDesc: 'A taxa de comparecimento acima de 70% demonstra protocolos eficientes de confirmação e relacionamento pré-consulta.',
+  },
+  {
+    id: 'q29', negTitle: 'Conversão da consulta em procedimento insuficiente',
+    negDescA: 'Menos de 20% das consultas resultam em procedimento. O paciente sai da consulta sem converter.',
+    negDescB: 'Taxa de 20–30% de conversão em procedimento sugere que o fechamento na consulta precisa de otimização.',
+    negImpact: 'Consultas realizadas sem conversão representam custo operacional sem retorno.',
+    negUrgency: 'alta',
+    posTitle: 'Alta conversão na consulta',
+    posDesc: 'A taxa acima de 45% indica domínio da consulta comercial e alto valor percebido.',
+  },
+  {
+    id: 'q30', negTitle: 'Sem processo de pós-venda',
+    negDescA: 'Não existe nenhuma ação de pós-venda. Pacientes que já compraram têm 60% mais chance de comprar novamente.',
+    negDescB: 'O pós-venda é muito básico e não gera recorrência nem indicações ativas.',
+    negImpact: 'Receita de recorrência e indicação qualificada sendo desperdiçada todo mês.',
+    negUrgency: 'media',
+    posTitle: 'Pós-venda estratégico',
+    posDesc: 'O processo de pós-venda gera recorrência e indicações ativas, reduzindo o custo de aquisição.',
+  },
+];
+
+function analisarPilar(r: FormData, questions: typeof POSICIONAMENTO_ANALYSIS, questionIds: string[]): PilarAnalise {
   const positivos: PontoAnalise[] = [];
   const negativos: PontoAnalise[] = [];
-  let score = 40;
 
-  const investeTrafego = /sim|investe|r\$|meta|google ads/i.test(r.trafego_investimento);
-  const naoInveste = /não|nunca|orgânico/i.test(r.trafego_investimento);
-  const agenciaGenerica = /agência|sem especialização|genérica/i.test(r.trafego_investimento);
-  const semCPL = /não mensura|não sabe|não monitora/i.test(r.trafego_cpl);
-  const usaRemarketing = /sim|usa remarketing|retargeting/i.test(r.trafego_remarketing);
-  const semRemarketing = /não|nunca/i.test(r.trafego_remarketing);
-  const criativosRuins = /stock|genéric|desconto|sem vídeo/i.test(r.trafego_criativos);
-  const oscila = /oscila|imprevisível|irregular/i.test(r.demanda_previsibilidade);
-  const dominaIndicacao = /indicação|orgânico|60|70|80/i.test(r.demanda_origem);
-  const semQualificacao = /não tem|sem sistema|qualquer|tudo cai/i.test(r.demanda_qualificacao);
+  let totalScore = 0;
+  let count = 0;
 
-  if (investeTrafego && !agenciaGenerica) {
-    score += 15;
-    positivos.push({ titulo: "Investimento ativo em aquisição paga", descricao: "Investir em tráfego pago demonstra entendimento de que crescimento não é passivo. Esse mindset é o primeiro requisito para escala." });
+  for (const qa of questions) {
+    const answer = r[qa.id as keyof FormData] as AnswerLetter;
+    if (!answer) continue;
+
+    const score = letterToScore(answer);
+    totalScore += score;
+    count++;
+
+    if (answer === 'A' || answer === 'B') {
+      negativos.push({
+        titulo: qa.negTitle,
+        descricao: answer === 'A' ? qa.negDescA : qa.negDescB,
+        impacto: qa.negImpact,
+        urgencia: qa.negUrgency,
+      });
+    } else if (answer === 'D' || answer === 'E') {
+      positivos.push({
+        titulo: qa.posTitle,
+        descricao: qa.posDesc,
+      });
+    }
   }
 
-  if (agenciaGenerica) {
-    score -= 10;
-    negativos.push({ titulo: "Tráfego gerenciado por agência sem especialização em saúde", descricao: "Agências generalistas não conhecem as restrições do CFM, o comportamento do paciente de alto valor nem as nuances de conversão de clínicas estéticas.", impacto: "Verba desperdiçada em leads que não têm perfil de compra da clínica.", urgencia: 'alta' });
-  }
+  const avgScore = count > 0 ? Math.round(totalScore / count) : 50;
+  const status = avgScore >= 70 ? 'ok' as const : avgScore >= 45 ? 'warning' as const : 'critical' as const;
 
-  if (naoInveste) {
-    score -= 15;
-    negativos.push({ titulo: "Nenhum investimento em aquisição paga", descricao: "Depender 100% de indicação e orgânico cria um teto de crescimento que não pode ser rompido com esforço — apenas com estrutura.", impacto: "Crescimento limitado ao boca a boca. Sem previsibilidade de demanda.", urgencia: 'alta' });
-  }
-
-  if (semCPL) {
-    score -= 10;
-    negativos.push({ titulo: "Custo por lead não mensurado", descricao: "Investir em mídia sem saber o CPL é como dirigir no escuro. Sem essa métrica, não há como otimizar campanhas, comparar canais ou projetar ROI.", impacto: "Investimento em mídia sem controle de retorno.", urgencia: 'alta' });
-  }
-
-  if (semRemarketing) {
-    score -= 8;
-    negativos.push({ titulo: "Ausência de remarketing — base quente ignorada", descricao: "Leads que já visitaram o site ou interagiram com o Instagram são 3x mais propensos a converter. Sem remarketing, esses contatos quentes são abandonados.", impacto: "CPL 2–3x mais caro por não recuperar interesse já demonstrado.", urgencia: 'media' });
-  }
-
-  if (usaRemarketing) {
-    score += 8;
-    positivos.push({ titulo: "Remarketing ativo — recuperação de interesse", descricao: "O uso de remarketing indica maturidade na estratégia de mídia. Leads reaquecidos têm custo de conversão significativamente menor." });
-  }
-
-  if (criativosRuins) {
-    score -= 8;
-    negativos.push({ titulo: "Criativos genéricos sem conexão com o paciente ideal", descricao: "Em cirurgia plástica, o criativo é o filtro do lead. Imagens de stock e copy baseado em desconto atraem o perfil errado e elevam o CPL.", impacto: "Leads chegando desqualificados sobrecarregam o atendimento sem converter.", urgencia: 'alta' });
-  }
-
-  if (oscila) {
-    score -= 8;
-    negativos.push({ titulo: "Geração de leads imprevisível e oscilante", descricao: "Meses bons seguidos de meses fracos indicam ausência de estratégia de demanda.", impacto: "Equipe superdimensionada em meses fracos. Clínica deixa dinheiro na mesa nos meses bons.", urgencia: 'media' });
-  }
-
-  if (dominaIndicacao) {
-    score += 8;
-    positivos.push({ titulo: "Base forte de indicação e autoridade orgânica", descricao: "Alta proporção de leads por indicação significa que a clínica entrega resultado e os pacientes confiam o suficiente para recomendar." });
-  }
-
-  if (semQualificacao) {
-    score -= 10;
-    negativos.push({ titulo: "Nenhum sistema de qualificação de leads", descricao: "Quando todos os leads caem diretamente no WhatsApp da secretária sem filtragem prévia, o atendimento gasta o mesmo tempo com um lead de R$ 500 e com um de R$ 15.000.", impacto: "Atendimento sobrecarregado com leads fora do perfil. Conversão cai.", urgencia: 'alta' });
-  }
-
-  score = Math.max(20, Math.min(75, score));
-  const status = score >= 55 ? 'warning' as const : 'critical' as const;
-  return { score, status, positivos, negativos };
-}
-
-function analisarAtendimento(r: FormData): PilarAnalise {
-  const positivos: PontoAnalise[] = [];
-  const negativos: PontoAnalise[] = [];
-  let score = 45;
-
-  const resposteLenta = /2|3|4|hora|próximo dia|tarde/i.test(r.atend_tempoResposta);
-  const respostaRapida = /5 min|imediato|rápido/i.test(r.atend_tempoResposta);
-  const semCobertura = /não|só horário|horário comercial|next day/i.test(r.atend_cobertura);
-  const semScript = /não tem|improvisa|cada.*jeito|sem padrão/i.test(r.atend_script);
-  const semFollowUp = /não faz|não retoma|sumiu|descarta/i.test(r.atend_followup);
-  const soPassa = /só preço|apenas preço|passa o preço|não gera valor/i.test(r.atend_geraValor);
-  const semPosVenda = /não|nenhum|zero/i.test(r.atend_posVenda);
-  const medico = /médico|doutor|especialista/i.test(r.atend_taxaConversaoConsulta);
-
-  const procedimentosMes = extrairNumeroDoTexto(r.procedimentosMes) || 10;
-
-  if (resposteLenta) {
-    score -= 12;
-    negativos.push({ titulo: "Tempo de resposta longo — janela de ouro perdida", descricao: "Estudos de conversão mostram que a chance de converter um lead cai 80% após os primeiros 5 minutos sem resposta. Em 2–4 horas, o paciente já avaliou 3 outros concorrentes.", impacto: "A maioria dos leads qualificados que chegam fora do horário são perdidos permanentemente.", urgencia: 'alta' });
-  }
-
-  if (respostaRapida) {
-    score += 5;
-    positivos.push({ titulo: "Agilidade no primeiro contato", descricao: "Responder em menos de 5 minutos posiciona a clínica como referência de cuidado desde o primeiro contato." });
-  }
-
-  if (semCobertura) {
-    score -= 10;
-    negativos.push({ titulo: "Sem cobertura fora do horário comercial", descricao: "A maioria das pesquisas por procedimentos estéticos acontece à noite e nos finais de semana.", impacto: "30–40% dos leads chegam fora do horário e não são aproveitados.", urgencia: 'alta' });
-  }
-
-  if (semScript) {
-    score -= 10;
-    negativos.push({ titulo: "Atendimento sem script — cada secretária atende diferente", descricao: "Sem um protocolo de atendimento, a qualidade da conversão depende do humor, da disponibilidade e da experiência de cada secretária no dia.", impacto: "Taxa de conversão oscila sem explicação. Impossível otimizar o que não é padronizado.", urgencia: 'alta' });
-  }
-
-  if (semFollowUp) {
-    score -= 10;
-    negativos.push({ titulo: "Ausência total de follow-up estruturado", descricao: "80% das vendas de procedimentos de alto valor acontecem após o 5º contato. Sem follow-up, a clínica abandona pacientes que estavam interessados mas precisavam de mais um empurrão.", impacto: `Estimativa: ${Math.round(procedimentosMes * 0.3)} cirurgias extras por mês com follow-up estruturado.`, urgencia: 'alta' });
-  }
-
-  if (soPassa) {
-    score -= 8;
-    negativos.push({ titulo: "Atendimento focado em preço — sem geração de valor", descricao: "Quando a secretária responde diretamente com o valor do procedimento sem qualificar o paciente, a conversa vira uma comparação de preços.", impacto: "Paciente compara R$ X desta clínica com R$ X de outra e escolhe pelo preço.", urgencia: 'alta' });
-  }
-
-  if (semPosVenda) {
-    score -= 5;
-    negativos.push({ titulo: "Sem processo de pós-venda ou retenção", descricao: "Um paciente que já realizou um procedimento tem 60% mais chance de contratar um segundo do que um lead novo.", impacto: "Receita de recorrência e indicação ativa sendo deixada na mesa todo mês.", urgencia: 'media' });
-  }
-
-  if (medico) {
-    positivos.push({ titulo: "Médico converte bem na consulta", descricao: "Alta taxa de conversão na consulta indica que o especialista domina a consulta comercial. O gargalo está antes da consulta — no atendimento e no follow-up." });
-  }
-
-  if (positivos.length === 0) {
-    positivos.push({ titulo: "Estrutura humana disponível para atendimento", descricao: "A clínica possui equipe dedicada ao atendimento de leads — o que é o ponto de partida. O que falta é padronizar, treinar e dotar essa equipe de processo e ferramentas." });
-  }
-
-  score = Math.max(15, Math.min(45, score));
-  return { score, status: 'critical', positivos, negativos };
+  return { score: avgScore, status, positivos, negativos };
 }
 
 export function gerarRelatorio(formData: FormData): Relatorio {
   const financeiro = calcularFinanceiro(formData);
-  const posicionamento = analisarPosicionamento(formData);
-  const performance = analisarPerformance(formData);
-  const atendimento = analisarAtendimento(formData);
+  const posicionamento = analisarPilar(formData, POSICIONAMENTO_ANALYSIS, QUESTIONS_POSICIONAMENTO.map(q => q.id));
+  const performance = analisarPilar(formData, PERFORMANCE_ANALYSIS, QUESTIONS_PERFORMANCE.map(q => q.id));
+  const atendimento = analisarPilar(formData, ATENDIMENTO_ANALYSIS, QUESTIONS_ATENDIMENTO.map(q => q.id));
 
   return {
     nomeClinica: formData.nomeClinica,
@@ -275,6 +379,7 @@ export function gerarRelatorio(formData: FormData): Relatorio {
     financeiro,
     pilares: { posicionamento, performance, atendimento },
     nivelRecomendado: 1,
+    formData,
   };
 }
 
