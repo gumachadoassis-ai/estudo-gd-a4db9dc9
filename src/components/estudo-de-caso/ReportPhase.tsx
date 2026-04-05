@@ -44,7 +44,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
       <section className="bg-surface-dark py-16 md:py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-8">
-            <img src={logoGd} alt="GD Co." className="h-8 w-8 rounded" />
+            <a href="https://guellesdelgado.lovable.app"><img src={logoGd} alt="GD Co." className="h-8 w-8 rounded" /></a>
             <span className="text-[10px] tracking-[0.25em] uppercase text-primary-foreground/40 font-display">
               Estudo de Caso
             </span>
@@ -245,7 +245,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
       <footer className="bg-surface-dark border-t border-primary-foreground/5 py-8 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoGd} alt="GD Co." className="h-7 w-7 rounded" />
+            <a href="https://guellesdelgado.lovable.app"><img src={logoGd} alt="GD Co." className="h-7 w-7 rounded" /></a>
             <div>
               <p className="text-[10px] text-primary-foreground/40 font-display tracking-wider">GUELLES & DELGADO CO.</p>
               <p className="text-[9px] text-primary-foreground/20 font-body">Estrutura comercial para clínicas de alto valor</p>

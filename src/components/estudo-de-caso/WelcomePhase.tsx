@@ -9,7 +9,7 @@ const WelcomePhase = ({ onStart }: WelcomePhaseProps) => {
   return (
     <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
       <div className="w-full max-w-[640px] bg-card rounded-2xl shadow-2xl p-8 md:p-12 text-center">
-        <img src={logoGd} alt="GD Co." className="h-16 w-16 mx-auto mb-6 rounded-lg" />
+        <a href="https://guellesdelgado.lovable.app"><img src={logoGd} alt="GD Co." className="h-16 w-16 mx-auto mb-6 rounded-lg" /></a>
 
         <span className="inline-block text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-4">
           Ferramenta Interna — GD Co.
