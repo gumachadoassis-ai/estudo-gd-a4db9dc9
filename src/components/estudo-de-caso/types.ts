@@ -3,6 +3,9 @@ export type AnswerLetter = '' | 'A' | 'B' | 'C' | 'D' | 'E';
 export interface FormData {
   // Etapa 0 — Dados Básicos
   nomeClinica: string;
+  cnpj: string;
+  email: string;
+  telefone: string;
   especialidade: string;
   cidade: string;
   faturamentoAtual: string;
@@ -127,7 +130,7 @@ export const FORM_STEPS = [
 ] as const;
 
 export const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
-  0: ['nomeClinica', 'especialidade', 'cidade', 'faturamentoAtual', 'faturamentoDesejado', 'ticketMedio', 'procedimentosMes', 'taxaConversao'],
+  0: ['nomeClinica', 'cnpj', 'email', 'telefone', 'especialidade', 'cidade', 'faturamentoAtual', 'faturamentoDesejado', 'ticketMedio', 'procedimentosMes', 'taxaConversao'],
   1: ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12'],
   2: ['q13', 'q14', 'q15', 'q16', 'q17', 'q18', 'q19'],
   3: ['q20', 'q21', 'q22', 'q23', 'q24', 'q25', 'q26', 'q27', 'q28', 'q29', 'q30'],
@@ -135,7 +138,8 @@ export const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
 
 export function getEmptyFormData(): FormData {
   return {
-    nomeClinica: '', especialidade: '', cidade: '',
+    nomeClinica: '', cnpj: '', email: '', telefone: '',
+    especialidade: '', cidade: '',
     faturamentoAtual: '', faturamentoDesejado: '', ticketMedio: '',
     procedimentosMes: '', taxaConversao: '',
     q1: '', q2: '', q3: '', q4: '', q5: '', q6: '',
