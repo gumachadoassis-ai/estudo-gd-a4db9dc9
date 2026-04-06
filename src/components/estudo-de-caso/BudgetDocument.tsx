@@ -198,7 +198,7 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
   return (
     <div style={s.page}>
       {/* ═══ PAGE 1 ═══ */}
-      <div style={s.p1}>
+      <div style={s.p1} data-pdf-page="1">
         {/* Header */}
         <div style={s.headerBar}>
           <div>
@@ -269,7 +269,7 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
       </div>
 
       {/* ═══ PAGE 2 ═══ */}
-      <div style={s.p2}>
+      <div style={s.p2} data-pdf-page="2">
         {/* Header repeated */}
         <div style={s.headerBar}>
           <div>
