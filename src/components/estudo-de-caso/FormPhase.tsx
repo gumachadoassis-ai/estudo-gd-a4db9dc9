@@ -10,13 +10,13 @@ interface FormPhaseProps {
   onSubmit: (data: FormData) => void;
 }
 
-type FieldFormat = 'text' | 'currency' | 'percent' | 'number';
+type FieldFormat = 'text' | 'currency' | 'percent' | 'number' | 'cnpj' | 'telefone';
 
 const BASIC_FIELDS: Record<string, { label: string; placeholder: string; format?: FieldFormat }> = {
   nomeClinica: { label: 'Nome da clínica', placeholder: 'Ex: Clínica Dra. Camila' },
-  cnpj: { label: 'CNPJ', placeholder: 'Ex: 12.345.678/0001-99' },
+  cnpj: { label: 'CNPJ', placeholder: '12345678000199', format: 'cnpj' },
   email: { label: 'E-mail', placeholder: 'Ex: contato@clinica.com.br' },
-  telefone: { label: 'Telefone', placeholder: 'Ex: (44) 99999-9999' },
+  telefone: { label: 'Telefone', placeholder: '44999999999', format: 'telefone' },
   especialidade: { label: 'Especialidade principal', placeholder: 'Ex: Cirurgia plástica estética' },
   cidade: { label: 'Cidade e estado', placeholder: 'Ex: Maringá — PR' },
   faturamentoAtual: { label: 'Faturamento mensal atual', placeholder: '180.000', format: 'currency' },
@@ -54,6 +54,23 @@ const formatCurrency = (value: string): string => {
 
 const formatNumber = (value: string): string => value.replace(/\D/g, '');
 
+const formatCNPJ = (value: string): string => {
+  const nums = value.replace(/\D/g, '').slice(0, 14);
+  if (nums.length <= 2) return nums;
+  if (nums.length <= 5) return `${nums.slice(0, 2)}.${nums.slice(2)}`;
+  if (nums.length <= 8) return `${nums.slice(0, 2)}.${nums.slice(2, 5)}.${nums.slice(5)}`;
+  if (nums.length <= 12) return `${nums.slice(0, 2)}.${nums.slice(2, 5)}.${nums.slice(5, 8)}/${nums.slice(8)}`;
+  return `${nums.slice(0, 2)}.${nums.slice(2, 5)}.${nums.slice(5, 8)}/${nums.slice(8, 12)}-${nums.slice(12)}`;
+};
+
+const formatTelefone = (value: string): string => {
+  const nums = value.replace(/\D/g, '').slice(0, 11);
+  if (nums.length <= 2) return nums.length ? `(${nums}` : '';
+  if (nums.length <= 7) return `(${nums.slice(0, 2)}) ${nums.slice(2)}`;
+  if (nums.length <= 10) return `(${nums.slice(0, 2)}) ${nums.slice(2, 6)}-${nums.slice(6)}`;
+  return `(${nums.slice(0, 2)}) ${nums.slice(2, 7)}-${nums.slice(7)}`;
+};
+
 const formatPercent = (value: string): string => {
   const nums = value.replace(/[^\d.,]/g, '').replace(',', '.');
   if (!nums) return '';
@@ -81,6 +98,8 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
     if (format === 'currency') formatted = formatCurrency(value);
     else if (format === 'number') formatted = formatNumber(value);
     else if (format === 'percent') formatted = formatPercent(value);
+    else if (format === 'cnpj') formatted = formatCNPJ(value);
+    else if (format === 'telefone') formatted = formatTelefone(value);
     setData((prev) => ({ ...prev, [field]: formatted }));
   };
 
