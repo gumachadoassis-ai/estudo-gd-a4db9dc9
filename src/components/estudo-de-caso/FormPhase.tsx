@@ -155,6 +155,16 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
             onChange={(e) => handleBasicChange(key, e.target.value, 'number')}
             placeholder={config.placeholder}
             className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors" />
+        ) : format === 'cnpj' ? (
+          <input type="text" inputMode="numeric" value={data[key] as string}
+            onChange={(e) => handleBasicChange(key, e.target.value, 'cnpj')}
+            placeholder={config.placeholder} maxLength={18}
+            className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors" />
+        ) : format === 'telefone' ? (
+          <input type="text" inputMode="numeric" value={data[key] as string}
+            onChange={(e) => handleBasicChange(key, e.target.value, 'telefone')}
+            placeholder={config.placeholder} maxLength={15}
+            className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary transition-colors" />
         ) : (
           <input type="text" value={data[key] as string}
             onChange={(e) => handleBasicChange(key, e.target.value)}
