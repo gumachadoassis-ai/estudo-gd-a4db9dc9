@@ -1,149 +1,201 @@
 import logoGd from '@/assets/logo-gd.png';
-import type { Relatorio, PontoAnalise } from './types';
-import { formatarMoeda } from './analysis';
+import type { Relatorio } from './types';
 
 interface BudgetDocumentProps {
   relatorio: Relatorio;
 }
 
-const ENTREGAS = [
-  { entregavel: 'Estudo da Base Atual', responsavel: 'COO', prazo: 'Semanas 1–2' },
-  { entregavel: 'Treinamento Secretária', responsavel: 'AULA GRAVADA', prazo: 'Semana 1–3' },
-  { entregavel: 'Treinamento Gestora Comercial', responsavel: 'COO', prazo: 'Semanas 2–4' },
-  { entregavel: 'Desenvolvimento do Funil de Vendas', responsavel: 'ANALISTA DE CRM', prazo: 'Semanas 2–4' },
-  { entregavel: 'Treinamento CRM', responsavel: 'ANALISTA DE CRM', prazo: 'Semana 5' },
-  { entregavel: 'Prova de Capacitação', responsavel: 'AULA GRAVADA', prazo: 'Semana 4' },
-  { entregavel: 'Trabalho na Base de Leads', responsavel: 'COO', prazo: 'Semanas 5–12' },
+const SERVICOS = [
+  { servico: 'Estudo da Base Atual', valor: 'R$ 500,00' },
+  { servico: 'Treinamentos', valor: 'R$ 9.000,00' },
+  { servico: 'Desenvolvimento de Funil de Vendas', valor: 'R$ 1.500,00' },
+  { servico: 'Prova de Capacitação', valor: 'R$ 3.000,00' },
+  { servico: 'Trabalho na Base de Leads', valor: 'R$ 1.000,00' },
 ];
 
 const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
-  const { nomeClinica, especialidade, cidade, financeiro, pilares } = relatorio;
+  const { nomeClinica } = relatorio;
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-  // Collect all critical/negative points
-  const allNegatives: { pilar: string; pontos: PontoAnalise[] }[] = [
-    { pilar: 'Posicionamento', pontos: pilares.posicionamento.negativos },
-    { pilar: 'Performance', pontos: pilares.performance.negativos },
-    { pilar: 'Atendimento', pontos: pilares.atendimento.negativos },
-  ].filter(p => p.pontos.length > 0);
-
   return (
-    <div className="bg-white text-gray-900 p-10 max-w-[800px] mx-auto" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-gray-900">
-        <div className="flex items-center gap-3">
-          <img src={logoGd} alt="GD Co." className="h-10 w-10 rounded" />
-          <div>
-            <p className="text-xs font-bold tracking-[0.2em] uppercase">GUELLES & DELGADO CO.</p>
-            <p className="text-[9px] text-gray-500">Estrutura comercial para clínicas de alto valor</p>
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-400">{dataAtual}</p>
-      </div>
-
+    <div
+      style={{
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        backgroundColor: '#f5f0eb',
+        color: '#1a1a1a',
+        padding: '60px 50px',
+        maxWidth: '800px',
+        margin: '0 auto',
+        minHeight: '1120px',
+        position: 'relative',
+      }}
+    >
       {/* Title */}
-      <div className="mb-10">
-        <p className="text-[10px] tracking-[0.2em] uppercase text-gray-400 mb-1">Estudo de Caso</p>
-        <h1 className="text-2xl font-bold mb-1">{nomeClinica}</h1>
-        <p className="text-sm text-gray-500">{especialidade} · {cidade}</p>
+      <h1
+        style={{
+          fontStyle: 'italic',
+          fontSize: '32px',
+          fontWeight: 700,
+          textAlign: 'center',
+          marginBottom: '40px',
+          color: '#1a1a1a',
+        }}
+      >
+        Proposta de orçamento
+      </h1>
+
+      {/* Client Info Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 40px', marginBottom: '36px', fontSize: '14px' }}>
+        <div>
+          <span style={{ fontWeight: 400 }}>Empresa: </span>
+          <span style={{ fontWeight: 600 }}>{nomeClinica}</span>
+        </div>
+        <div />
+        <div>
+          <span style={{ fontWeight: 400 }}>Responsável: </span>
+          <span>João Delgado</span>
+        </div>
+        <div>
+          <span style={{ fontWeight: 400 }}>Validade do orçamento: </span>
+          <span>{dataAtual}</span>
+        </div>
+        <div>
+          <span style={{ fontWeight: 400 }}>Email: </span>
+          <span>Guellesdelgado@gmail.com</span>
+        </div>
+        <div>
+          <span style={{ fontWeight: 400 }}>Telefone: </span>
+          <span>(44) 98868-4100</span>
+        </div>
       </div>
 
-      {/* Scores Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
-        {[
-          { label: 'Posicionamento', score: pilares.posicionamento.score, status: pilares.posicionamento.status },
-          { label: 'Performance', score: pilares.performance.score, status: pilares.performance.status },
-          { label: 'Atendimento', score: pilares.atendimento.score, status: pilares.atendimento.status },
-        ].map(p => (
-          <div key={p.label} className="text-center border border-gray-200 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">{p.label}</p>
-            <p className={`text-2xl font-bold ${p.status === 'critical' ? 'text-red-600' : p.status === 'warning' ? 'text-amber-500' : 'text-green-600'}`}>
-              {p.score}/100
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* Intro text */}
+      <p
+        style={{
+          fontStyle: 'italic',
+          fontSize: '14px',
+          lineHeight: '1.7',
+          color: '#333',
+          marginBottom: '32px',
+        }}
+      >
+        Com base em nossa conversa, especificamos os serviços necessários para desenvolver
+        um bom trabalho para o seu negócio. Em caso de dúvidas, estou à disposição.
+      </p>
 
-      {/* Financial Impact */}
-      <div className="bg-gray-50 rounded-lg p-6 mb-10 text-center">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Receita não capturada identificada</p>
-        <p className="text-3xl font-bold text-red-600">{formatarMoeda(financeiro.faturamentoPerdidoMes)}<span className="text-base font-normal text-gray-400">/mês</span></p>
-        <p className="text-xs text-gray-400 mt-1">
-          {financeiro.cirurgiasPerdidas} procedimentos × {formatarMoeda(financeiro.ticketMedio)} ticket médio
+      {/* Services Table */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0' }}>
+        <thead>
+          <tr>
+            <th
+              style={{
+                backgroundColor: '#E67E22',
+                color: '#fff',
+                textAlign: 'left',
+                padding: '14px 20px',
+                fontSize: '16px',
+                fontStyle: 'italic',
+                fontWeight: 700,
+                borderBottom: '2px solid #cf6d15',
+              }}
+            >
+              Serviço
+            </th>
+            <th
+              style={{
+                backgroundColor: '#E67E22',
+                color: '#fff',
+                textAlign: 'right',
+                padding: '14px 20px',
+                fontSize: '16px',
+                fontStyle: 'italic',
+                fontWeight: 700,
+                borderBottom: '2px solid #cf6d15',
+              }}
+            >
+              Valor parcial
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {SERVICOS.map((s, i) => (
+            <tr key={i}>
+              <td
+                style={{
+                  padding: '14px 20px',
+                  fontSize: '14px',
+                  fontStyle: 'italic',
+                  borderBottom: '1px solid #ddd',
+                  backgroundColor: i % 2 === 0 ? '#fff' : '#f9f6f2',
+                }}
+              >
+                {s.servico}
+              </td>
+              <td
+                style={{
+                  padding: '14px 20px',
+                  fontSize: '14px',
+                  textAlign: 'right',
+                  borderBottom: '1px solid #ddd',
+                  backgroundColor: i % 2 === 0 ? '#fff' : '#f9f6f2',
+                }}
+              >
+                {s.valor}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td
+              colSpan={2}
+              style={{
+                backgroundColor: '#E67E22',
+                color: '#fff',
+                textAlign: 'center',
+                padding: '16px 20px',
+                fontSize: '20px',
+                fontWeight: 700,
+                fontStyle: 'italic',
+              }}
+            >
+              Valor total: R$15.000,00
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+
+      {/* Payment Info */}
+      <div style={{ marginTop: '36px', fontSize: '14px', lineHeight: '1.8' }}>
+        <p style={{ fontWeight: 700, marginBottom: '4px' }}>Informações de pagamento:</p>
+        <p style={{ color: '#444' }}>
+          Pagamento mediante link enviado para cliente pós assinatura de contrato
         </p>
       </div>
 
-      {/* Critical Points */}
-      <div className="mb-10">
-        <h2 className="text-lg font-bold mb-4 pb-2 border-b border-gray-200">Pontos Críticos Identificados</h2>
-        {allNegatives.map(({ pilar, pontos }) => (
-          <div key={pilar} className="mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">{pilar}</h3>
-            <ul className="space-y-1.5">
-              {pontos.map((p, i) => (
-                <li key={i} className="flex gap-2 text-sm">
-                  <span className="text-red-500 flex-shrink-0">•</span>
-                  <span>{p.titulo}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <div style={{ marginTop: '16px', fontSize: '14px', lineHeight: '1.8' }}>
+        <p style={{ fontWeight: 700, marginBottom: '4px' }}>Prazo de entrega:</p>
+        <p style={{ color: '#444' }}>
+          Início do projeto a partir da confirmação do pagamento.
+        </p>
       </div>
 
-      {/* Implementation Scope — always on a new page */}
-      <div className="mb-10" style={{ breakBefore: 'page', pageBreakBefore: 'always' }}>
-        <h2 className="text-lg font-bold mb-2 pb-2 border-b border-gray-200">Plano de Ação — Implementação (90 dias)</h2>
-        <p className="text-sm text-gray-500 mb-4">Objetivo: estruturar a operação comercial do cliente do zero.</p>
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-900 text-white">
-              <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Entregável</th>
-              <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Responsável</th>
-              <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Prazo Médio</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ENTREGAS.map((e, i) => (
-              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-4 py-2.5 text-sm font-medium border-b border-gray-100">{e.entregavel}</td>
-                <td className="px-4 py-2.5 text-sm text-gray-600 border-b border-gray-100">{e.responsavel}</td>
-                <td className="px-4 py-2.5 text-sm text-gray-600 border-b border-gray-100">{e.prazo}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Investment */}
-      <div className="bg-gray-900 text-white rounded-lg p-8 mb-10">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-3 text-center">Investimento</p>
-        <p className="text-4xl font-bold text-center mb-4">R$ 15.000,00</p>
-        <div className="text-center space-y-1.5">
-          <p className="text-sm text-gray-300">Pagamento integral com desconto</p>
-          <p className="text-sm text-gray-400">ou</p>
-          <p className="text-sm text-gray-300">3x de R$ 5.000,00</p>
-          <p className="text-xs text-gray-500 mt-2">Primeira parcela na assinatura do contrato</p>
+      {/* Signature + Logo */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          marginTop: '80px',
+          paddingTop: '20px',
+        }}
+      >
+        <div>
+          <div style={{ borderBottom: '1px solid #1a1a1a', width: '200px', marginBottom: '8px' }} />
+          <p style={{ fontSize: '14px', fontWeight: 700, fontStyle: 'italic' }}>João Delgado - CMO</p>
+          <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#555' }}>Guelles & Delgado Co.</p>
         </div>
-      </div>
-
-      {/* Projected Return */}
-      <div className="text-center bg-amber-50 rounded-lg p-6 mb-10">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Retorno estimado nos primeiros 90 dias</p>
-        <p className="text-2xl font-bold text-amber-600">{formatarMoeda(financeiro.faturamentoPerdidoMes * 3)}</p>
-        <p className="text-xs text-gray-400 mt-1">Baseado na recuperação de {financeiro.cirurgiasPerdidas} procedimentos/mês</p>
-      </div>
-
-      {/* Footer */}
-      <div className="pt-6 border-t border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <img src={logoGd} alt="GD Co." className="h-6 w-6 rounded" />
-          <div>
-            <p className="text-[9px] font-bold tracking-wider uppercase">GUELLES & DELGADO CO.</p>
-            <p className="text-[8px] text-gray-400">Estrutura comercial para clínicas de alto valor</p>
-          </div>
-        </div>
-        <p className="text-[8px] text-gray-400">Documento confidencial · {dataAtual}</p>
+        <img src={logoGd} alt="GD Co." style={{ height: '64px', width: '64px', borderRadius: '6px' }} />
       </div>
     </div>
   );
