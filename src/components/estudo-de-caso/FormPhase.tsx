@@ -14,6 +14,9 @@ type FieldFormat = 'text' | 'currency' | 'percent' | 'number';
 
 const BASIC_FIELDS: Record<string, { label: string; placeholder: string; format?: FieldFormat }> = {
   nomeClinica: { label: 'Nome da clínica', placeholder: 'Ex: Clínica Dra. Camila' },
+  cnpj: { label: 'CNPJ', placeholder: 'Ex: 12.345.678/0001-99' },
+  email: { label: 'E-mail', placeholder: 'Ex: contato@clinica.com.br' },
+  telefone: { label: 'Telefone', placeholder: 'Ex: (44) 99999-9999' },
   especialidade: { label: 'Especialidade principal', placeholder: 'Ex: Cirurgia plástica estética' },
   cidade: { label: 'Cidade e estado', placeholder: 'Ex: Maringá — PR' },
   faturamentoAtual: { label: 'Faturamento mensal atual', placeholder: '180.000', format: 'currency' },
