@@ -192,6 +192,7 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
         }}
       >
         <div>
+          <img src={assinaturaJoao} alt="Assinatura João Delgado" style={{ height: '80px', marginBottom: '4px' }} />
           <div style={{ borderBottom: '1px solid #1a1a1a', width: '200px', marginBottom: '8px' }} />
           <p style={{ fontSize: '14px', fontWeight: 700, fontStyle: 'italic' }}>João Delgado - CMO</p>
           <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#555' }}>Guelles & Delgado Co.</p>
