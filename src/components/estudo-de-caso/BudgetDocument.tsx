@@ -1,4 +1,5 @@
 import logoGd from '@/assets/logo-gd.png';
+import assinaturaJoao from '@/assets/assinatura-joao.png';
 import type { Relatorio } from './types';
 
 interface BudgetDocumentProps {
