@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
 import { ChevronLeft } from 'lucide-react';
-import type { FormData, AnswerLetter, QuestionDef } from './types';
+import type { FormData, AnswerLetter, QuestionDef, STEPDimension } from './types';
 import {
   FORM_STEPS, STEP_FIELDS, getEmptyFormData,
   QUESTIONS_POSICIONAMENTO, QUESTIONS_PERFORMANCE, QUESTIONS_ATENDIMENTO,
+  STEP_LABELS,
 } from './types';
 
 interface FormPhaseProps {
@@ -26,25 +27,24 @@ const BASIC_FIELDS: Record<string, { label: string; placeholder: string; format?
   taxaConversao: { label: 'Taxa de conversão atual estimada', placeholder: '10', format: 'percent' },
 };
 
+// Group questions by STEP dimension for each pilar step
+function groupBySTEP(questions: QuestionDef[]): { step: STEPDimension; title: string; questions: QuestionDef[] }[] {
+  const steps: STEPDimension[] = ['S', 'T', 'E', 'P'];
+  return steps.map((s) => ({
+    step: s,
+    title: `${STEP_LABELS[s].short} — ${STEP_LABELS[s].full}`,
+    questions: questions.filter((q) => q.step === s),
+  })).filter((g) => g.questions.length > 0);
+}
+
 const STEP_SECTIONS: Record<number, { title: string; questions: QuestionDef[] }[]> = {
-  1: [
-    { title: 'Presença Digital e Autoridade', questions: QUESTIONS_POSICIONAMENTO.slice(0, 3) },
-    { title: 'Site e Percepção de Marca', questions: QUESTIONS_POSICIONAMENTO.slice(3, 6) },
-    { title: 'Redes Sociais e Imagem', questions: QUESTIONS_POSICIONAMENTO.slice(6, 9) },
-    { title: 'Clareza Estratégica', questions: QUESTIONS_POSICIONAMENTO.slice(9, 12) },
-  ],
-  2: [
-    { title: 'Tráfego Pago', questions: QUESTIONS_PERFORMANCE.slice(0, 4) },
-    { title: 'Qualidade da Demanda', questions: QUESTIONS_PERFORMANCE.slice(4, 7) },
-  ],
-  3: [
-    { title: 'Processo de Resposta', questions: QUESTIONS_ATENDIMENTO.slice(0, 3) },
-    { title: 'Qualidade do Atendimento', questions: QUESTIONS_ATENDIMENTO.slice(3, 6) },
-    { title: 'Follow-up e Conversão', questions: QUESTIONS_ATENDIMENTO.slice(6, 11) },
-  ],
+  1: groupBySTEP(QUESTIONS_POSICIONAMENTO).map((g) => ({ title: g.title, questions: g.questions })),
+  2: groupBySTEP(QUESTIONS_PERFORMANCE).map((g) => ({ title: g.title, questions: g.questions })),
+  3: groupBySTEP(QUESTIONS_ATENDIMENTO).map((g) => ({ title: g.title, questions: g.questions })),
 };
 
 const LETTERS: AnswerLetter[] = ['A', 'B', 'C', 'D', 'E'];
+const LETTER_LABELS = ['Ruim', 'Básica', 'Normal', 'Boa', 'Excelente'];
 
 const formatCurrency = (value: string): string => {
   const nums = value.replace(/\D/g, '');
@@ -177,12 +177,23 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
 
   const renderQuestion = (q: QuestionDef) => {
     const selected = data[q.id] as AnswerLetter;
+    const imeLabel = q.ime === 'I' ? 'Implementação' : q.ime === 'M' ? 'Maturação' : 'Escala';
+
     return (
       <div key={q.id} className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+            q.ime === 'I' ? 'bg-orange-500/15 text-orange-400' :
+            q.ime === 'M' ? 'bg-amber-500/15 text-amber-400' :
+            'bg-emerald-500/15 text-emerald-400'
+          }`}>
+            {imeLabel}
+          </span>
+        </div>
         <p className="text-[13px] font-semibold text-foreground mb-3">
           <span className="text-muted-foreground mr-1.5">{q.num}.</span>{q.text}
         </p>
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {LETTERS.map((letter, idx) => {
             const isSelected = selected === letter;
             return (
@@ -191,15 +202,15 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
                 type="button"
                 onClick={() => handleAnswer(q.id, letter)}
                 className={`
-                  w-full text-left px-4 py-3 rounded-lg border text-sm transition-all
+                  text-center px-2 py-3 rounded-lg border text-xs transition-all
                   ${isSelected
-                    ? 'border-primary bg-primary/10 text-foreground font-medium'
+                    ? 'border-primary bg-primary/10 text-foreground font-bold'
                     : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-primary/5'
                   }
                 `}
               >
-                <span className={`inline-block w-6 font-bold ${isSelected ? 'text-primary' : 'text-muted-foreground/60'}`}>{letter})</span>
-                {q.options[idx]}
+                <span className={`block text-sm font-bold mb-0.5 ${isSelected ? 'text-primary' : 'text-muted-foreground/60'}`}>{letter}</span>
+                <span className="block text-[10px] leading-tight">{LETTER_LABELS[idx]}</span>
               </button>
             );
           })}
@@ -234,7 +245,10 @@ const FormPhase = ({ onSubmit }: FormPhaseProps) => {
             ) : (
               STEP_SECTIONS[step]?.map((section, si) => (
                 <div key={si}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4 border-b border-border pb-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4 border-b border-border pb-2 flex items-center gap-2">
+                    <span className="bg-primary/20 text-primary w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold">
+                      {section.title.charAt(0)}
+                    </span>
                     {section.title}
                   </h3>
                   {section.questions.map(renderQuestion)}
