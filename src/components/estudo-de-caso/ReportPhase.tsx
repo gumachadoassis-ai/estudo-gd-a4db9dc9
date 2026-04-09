@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import logoGd from '@/assets/logo-gd.png';
 import type { Relatorio } from './types';
 import { formatarMoeda } from './analysis';
@@ -7,7 +7,8 @@ import { useCountUp } from '@/hooks/useCountUp';
 import GaugeSVG from './GaugeSVG';
 import PilarCard from './PilarCard';
 import FunnelChart from './FunnelChart';
-import DashboardBI from './DashboardBI';
+import STEPMatrix from './STEPMatrix';
+import MethodologySection from './MethodologySection';
 import ExportPDF from './ExportPDF';
 import ProductCatalog from './ProductCatalog';
 import BudgetDocument from './BudgetDocument';
@@ -17,7 +18,7 @@ interface ReportPhaseProps {
 }
 
 const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
-  const { financeiro, pilares, nomeClinica, especialidade, cidade, nivelRecomendado } = relatorio;
+  const { financeiro, pilares, nomeClinica, especialidade, cidade, nivelRecomendado, matrix } = relatorio;
   const retornoEstimado = financeiro.faturamentoPerdidoMes * 3;
   const animPerdidoMes = useCountUp(financeiro.faturamentoPerdidoMes, 2000);
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -28,15 +29,6 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
       atual: financeiro.faturamentoAtualNum,
       potencial: financeiro.faturamentoAtualNum + Math.round(financeiro.faturamentoPerdidoMes * (i + 1) / 12),
     })), [financeiro]);
-
-  const radarData = useMemo(() => [
-    { subject: 'Posicionamento', atual: pilares.posicionamento.score, benchmark: 85 },
-    { subject: 'Tráfego', atual: pilares.performance.score, benchmark: 80 },
-    { subject: 'Atendimento', atual: pilares.atendimento.score, benchmark: 88 },
-    { subject: 'Conversão', atual: Math.round(pilares.atendimento.score * 0.8), benchmark: 82 },
-    { subject: 'Follow-up', atual: Math.round(pilares.atendimento.score * 0.6), benchmark: 79 },
-    { subject: 'CRM / Dados', atual: 18, benchmark: 85 },
-  ], [pilares]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,12 +68,14 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
 
       {/* Report content */}
       <div id="report-content">
-        <DashboardBI relatorio={relatorio} />
+
+        {/* ═══ CENÁRIO 1: RESULTADO DO ESTUDO — Matriz STEP × IME ═══ */}
+        <STEPMatrix relatorio={relatorio} />
 
         {/* Gauges */}
         <section className="bg-card py-14 px-4">
           <div className="max-w-4xl mx-auto">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Análise Tripartida</p>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Análise por Pilar</p>
             <h2 className="text-xl md:text-2xl font-bold text-foreground mb-10 text-center font-display">Visão Geral da Operação</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <GaugeSVG score={pilares.posicionamento.score} label="Posicionamento" status={pilares.posicionamento.status} />
@@ -159,80 +153,43 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* Radar */}
-        <section className="bg-card py-14 px-4">
-          <div className="max-w-4xl mx-auto">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Maturidade Operacional</p>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-10 text-center font-display">Mapa de Competências</h2>
-            <div className="h-80 md:h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar name={nomeClinica} dataKey="atual" stroke="hsl(37, 91%, 55%)" fill="hsl(37, 91%, 55%)" fillOpacity={0.12} strokeWidth={2} />
-                  <Radar name="Benchmark do setor" dataKey="benchmark" stroke="hsl(142, 71%, 45%)" fill="none" strokeDasharray="5 5" strokeWidth={1.5} />
-                  <Legend wrapperStyle={{ fontSize: '11px' }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </section>
+        {/* ═══ CENÁRIO 2: NOSSA METODOLOGIA ═══ */}
+        <MethodologySection />
 
-        {/* Comparative Table */}
+        {/* ═══ CENÁRIO 3: OFERTA DE PREÇO ═══ */}
+        {/* Análise matemática do nível recomendado */}
         <section className="bg-background py-14 px-4">
           <div className="max-w-4xl mx-auto">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Análise Comparativa</p>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-10 text-center font-display">Cenário Atual vs. Cenário Otimizado</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left px-5 py-3.5 text-[10px] tracking-[0.15em] uppercase font-display text-status-critical bg-destructive/[0.04] rounded-tl-xl border-b border-border">Cenário Atual</th>
-                    <th className="text-left px-5 py-3.5 text-[10px] tracking-[0.15em] uppercase font-display text-status-ok bg-status-ok/[0.04] rounded-tr-xl border-b border-border">Cenário Otimizado</th>
-                  </tr>
-                </thead>
-                <tbody className="font-body text-sm">
-                  {[
-                    ['Tempo de resposta superior a 2 horas', 'Protocolo de resposta em menos de 5 minutos'],
-                    ['Equipe comercial focada em informar preço', 'Equipe treinada em geração de valor percebido'],
-                    ['Leads não retomados após primeiro contato', 'Follow-up estruturado em múltiplos pontos de contato'],
-                    ['Gestão comercial sem ferramenta de CRM', 'CRM implantado com funil de vendas ativo'],
-                    [`Conversão atual: ${Math.round(financeiro.taxaConversaoAtual * 100)}%`, 'Meta de conversão: 35%'],
-                    ['Agenda com variação imprevisível', 'Previsibilidade operacional e de receita'],
-                    ['Decisões baseadas em percepção', 'Decisões orientadas por dados e métricas'],
-                    [`${formatarMoeda(financeiro.faturamentoPerdidoMes)} em receita não capturada`, 'Receita recuperada e projeção de crescimento'],
-                  ].map(([atual, otimizado], i) => (
-                    <tr key={i} className="border-b border-border/60 last:border-0">
-                      <td className="px-5 py-3.5 text-muted-foreground text-[13px]">{atual}</td>
-                      <td className="px-5 py-3.5 text-foreground text-[13px] font-medium">{otimizado}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mb-10 text-center">
+              <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1">Análise Matemática</p>
+              <h2 className="text-xl md:text-2xl font-bold text-foreground font-display">Diagnóstico de Maturidade e Recomendação</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {(['I', 'M', 'E'] as const).map((ime) => {
+                const avg = matrix.imeAverages[ime];
+                const label = ime === 'I' ? 'Implementação' : ime === 'M' ? 'Maturação' : 'Escala';
+                const isActive = (ime === 'I' && nivelRecomendado === 1) ||
+                                 (ime === 'M' && nivelRecomendado === 2) ||
+                                 (ime === 'E' && nivelRecomendado === 3);
+                return (
+                  <div key={ime} className={`rounded-2xl p-6 text-center border ${isActive ? 'bg-primary/[0.08] border-primary/30' : 'bg-card border-border'}`}>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-2">{label}</p>
+                    <p className={`text-3xl font-bold font-display ${isActive ? 'text-primary' : 'text-foreground'}`}>{avg}%</p>
+                    <p className={`text-xs mt-1 ${avg >= 66 ? 'text-emerald-500' : avg >= 36 ? 'text-amber-500' : 'text-orange-500'}`}>
+                      {avg >= 66 ? 'Consolidado' : avg >= 36 ? 'Avançando' : 'Iniciando'}
+                    </p>
+                    {isActive && (
+                      <p className="text-[9px] mt-3 text-primary font-bold uppercase tracking-wider">Nível de intervenção recomendado</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* Before/After */}
-        <section className="bg-surface-dark py-14 px-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-primary-foreground/[0.04] border border-primary-foreground/10 rounded-2xl p-8 text-center">
-                <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-3">Receita Atual</p>
-                <p className="text-2xl md:text-3xl font-bold text-primary-foreground font-display">{formatarMoeda(financeiro.faturamentoAtualNum)}<span className="text-base font-normal text-primary-foreground/40">/mês</span></p>
-                <p className="text-xs text-primary-foreground/30 mt-2 font-body">{financeiro.cirurgiasAtuais} procedimentos · {Math.round(financeiro.taxaConversaoAtual * 100)}% conversão</p>
-              </div>
-              <div className="bg-primary/[0.08] border border-primary/20 rounded-2xl p-8 text-center">
-                <p className="text-[10px] tracking-[0.2em] uppercase text-primary/80 font-display mb-3">Projeção Otimizada</p>
-                <p className="text-2xl md:text-3xl font-bold text-primary font-display">{formatarMoeda(financeiro.faturamentoAtualNum + financeiro.faturamentoPerdidoMes)}<span className="text-base font-normal text-primary/60">/mês</span></p>
-                <p className="text-xs text-primary-foreground/30 mt-2 font-body">{financeiro.cirurgiasPotencial} procedimentos · 35% conversão</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Product Catalog (on-screen only) */}
+        {/* Product Catalog */}
         <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} />
       </div>
 
