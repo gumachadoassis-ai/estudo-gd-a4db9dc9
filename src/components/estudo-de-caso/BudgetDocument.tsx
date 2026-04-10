@@ -6,13 +6,56 @@ interface BudgetDocumentProps {
   relatorio: Relatorio;
 }
 
-const SERVICOS = [
-  { item: 'Serviço 1', servico: 'Estudo da Base Atual', valor: 'R$ 500,00' },
-  { item: 'Serviço 2', servico: 'Treinamentos', valor: 'R$ 9.000,00' },
-  { item: 'Serviço 3', servico: 'Desenvolvimento de Funil de Vendas', valor: 'R$ 1.500,00' },
-  { item: 'Serviço 4', servico: 'Prova de Capacitação', valor: 'R$ 3.000,00' },
-  { item: 'Serviço 5', servico: 'Trabalho na Base de Leads', valor: 'R$ 1.000,00' },
+const PRODUTOS = [
+  {
+    nivel: 1 as const,
+    nome: 'IMPLEMENTAÇÃO',
+    prazo: '90 Dias',
+    investimento: 15000,
+    items: [
+      'Estudo da Base Atual',
+      'Treinamento Secretária',
+      'Treinamento Gestora Comercial',
+      'Desenvolvimento de Funil de Vendas',
+      'Treinamento CRM',
+      'Prova de Capacitação',
+      'Trabalho na Base de Leads',
+    ],
+  },
+  {
+    nivel: 2 as const,
+    nome: 'MANUTENÇÃO',
+    prazo: '06 Meses',
+    investimento: 24000,
+    items: [
+      'Otimização de Processos',
+      'One a One',
+      'PDI',
+      'Plano de Metas',
+      'Metrificação de Processos',
+      'Novo Estudo de Caso Comercial',
+    ],
+    inclui: 'Inclui tudo do Nível 01',
+  },
+  {
+    nivel: 3 as const,
+    nome: 'ESCALA',
+    prazo: '12 Meses',
+    investimento: 42000,
+    items: [
+      'Crescimento de Time',
+      'Auditoria de Atendimento',
+      'Cliente Oculto',
+      'Desenvolvimento de Estratégia de Aquisição',
+      'Execução de Performance',
+    ],
+    inclui: 'Inclui tudo dos Níveis 01 e 02',
+  },
 ];
+
+function formatarMoedaPDF(valor: number): string {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+}
 
 const s = {
   page: {
@@ -192,7 +235,15 @@ const s = {
 };
 
 const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
-  const { nomeClinica, formData } = relatorio;
+  const { nomeClinica, formData, nivelRecomendado } = relatorio;
+  const produto = PRODUTOS.find(p => p.nivel === nivelRecomendado) || PRODUTOS[0];
+  // Collect all items (include lower levels if applicable)
+  const allItems: string[] = [];
+  for (const p of PRODUTOS) {
+    if (p.nivel <= nivelRecomendado) {
+      allItems.push(...p.items);
+    }
+  }
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
@@ -233,31 +284,33 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
         </table>
 
         {/* Services Table */}
-        <p style={s.sectionTitle}>Produtos e Serviços</p>
+        <p style={s.sectionTitle}>Produtos e Serviços — {produto.nome} (Nível {String(produto.nivel).padStart(2, '0')})</p>
         <table style={s.serviceTable}>
           <thead>
             <tr>
               <th style={s.serviceTh}>Item</th>
-              <th style={s.serviceTh}>Serviço</th>
-              <th style={s.serviceThRight}>Total</th>
+              <th style={s.serviceTh}>Entrega</th>
             </tr>
           </thead>
           <tbody>
-            {SERVICOS.map((srv, i) => (
+            {allItems.map((item, i) => (
               <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                <td style={{ ...s.serviceTd, fontWeight: 600, width: '100px' }}>{srv.item}</td>
-                <td style={s.serviceTd}>{srv.servico}</td>
-                <td style={s.serviceTdRight}>{srv.valor}</td>
+                <td style={{ ...s.serviceTd, fontWeight: 600, width: '80px' }}>{String(i + 1).padStart(2, '0')}</td>
+                <td style={s.serviceTd}>{item}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={s.totalRow}>
-              <td colSpan={2} style={s.totalLabel}>Total</td>
-              <td style={s.totalValue}>R$ 15.000,00</td>
+              <td style={s.totalLabel}>Total</td>
+              <td style={s.totalValue}>{formatarMoedaPDF(produto.investimento)}</td>
             </tr>
           </tfoot>
         </table>
+
+        <div style={{ fontSize: '11px', color: '#888', marginBottom: '16px' }}>
+          <strong>Prazo de execução:</strong> {produto.prazo}
+        </div>
 
         {/* Payment */}
         <p style={s.sectionTitle}>Forma de Pagamento</p>
