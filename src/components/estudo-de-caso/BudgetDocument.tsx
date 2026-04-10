@@ -220,9 +220,9 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
           <tbody>
             {[
               ['Cliente', nomeClinica],
-              ['CPF/CNPJ', formData.cnpj || '—'],
+              ['Responsável', formData.responsavel || '—'],
               ['Telefone', formData.telefone || '—'],
-              ['E-mail', formData.email || '—'],
+              ['Instagram', formData.instagram || '—'],
             ].map(([label, value], i) => (
               <tr key={i}>
                 <td style={{ ...s.clientTd, ...s.clientLabel }}>{label}</td>
