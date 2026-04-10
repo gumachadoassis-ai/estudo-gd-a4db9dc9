@@ -1,4 +1,4 @@
-import type { FormData, Relatorio, BlocoAnalise, PontoAnalise, AnswerLetter, BlocoId, QuestionDef } from './types';
+import type { FormData, Relatorio, BlocoAnalise, PontoAnalise, AnswerLetter, BlocoId, QuestionDef, STEPDimension, IMELevel, STEPIMECell, STEPIMEMatrix } from './types';
 import { QUESTIONS_DEMANDA, QUESTIONS_POSICIONAMENTO, QUESTIONS_ATENDIMENTO, QUESTIONS_CONVERSAO } from './types';
 
 function extrairNumeroDoTexto(texto: string): number {
@@ -42,6 +42,98 @@ export function calcularFinanceiro(r: FormData) {
   };
 }
 
+// ── STEP × IME Matrix ──
+// Map: Blocos → STEP columns
+//   Demanda → S (Status do Processo)
+//   Posicionamento → T (Membros da Equipe / percepção)
+//   Atendimento → E (Ambiente / experiência)
+//   Conversão → P (Progresso à Meta)
+// Within each bloco, questions map to IME rows by progression:
+//   1st question → I (Implementação)
+//   2nd question → M (Maturação)
+//   3rd+4th avg  → E (Escala)  [or 3rd only if 3 questions]
+
+const BLOCO_TO_STEP: Record<BlocoId, STEPDimension> = {
+  demanda: 'S',
+  posicionamento: 'T',
+  atendimento: 'E',
+  conversao: 'P',
+};
+
+function classifyScore(score: number): string {
+  if (score >= 66) return 'Consolidado';
+  if (score >= 36) return 'Avançando';
+  return 'Iniciando';
+}
+
+function calcularMatrix(formData: FormData): STEPIMEMatrix {
+  const cells: STEPIMECell[] = [];
+  const blocoQuestions: Record<BlocoId, QuestionDef[]> = {
+    demanda: QUESTIONS_DEMANDA,
+    posicionamento: QUESTIONS_POSICIONAMENTO,
+    atendimento: QUESTIONS_ATENDIMENTO,
+    conversao: QUESTIONS_CONVERSAO,
+  };
+
+  const blocoIds: BlocoId[] = ['demanda', 'posicionamento', 'atendimento', 'conversao'];
+
+  for (const blocoId of blocoIds) {
+    const questions = blocoQuestions[blocoId];
+    const step = BLOCO_TO_STEP[blocoId];
+    const scores: number[] = [];
+
+    for (const q of questions) {
+      if (q.isPercent) {
+        // Map q14 percent to a score (0-100 scale, cap at 35% = 100)
+        const pct = extrairNumeroDoTexto(formData[q.id] as string);
+        scores.push(Math.min(Math.round((pct / 35) * 100), 100));
+      } else {
+        const answer = formData[q.id] as AnswerLetter;
+        scores.push(answer ? letterToScore(answer) : 0);
+      }
+    }
+
+    // Map to IME: first=I, second=M, rest averaged=E
+    const imeScores: Record<IMELevel, number> = {
+      I: scores[0] ?? 0,
+      M: scores[1] ?? 0,
+      E: scores.length > 2
+        ? Math.round(scores.slice(2).reduce((a, b) => a + b, 0) / scores.slice(2).length)
+        : 0,
+    };
+
+    for (const ime of ['I', 'M', 'E'] as IMELevel[]) {
+      cells.push({
+        step,
+        ime,
+        score: imeScores[ime],
+        label: classifyScore(imeScores[ime]),
+      });
+    }
+  }
+
+  // Averages per STEP
+  const steps: STEPDimension[] = ['S', 'T', 'E', 'P'];
+  const imes: IMELevel[] = ['I', 'M', 'E'];
+  const stepAverages = {} as Record<STEPDimension, number>;
+  for (const s of steps) {
+    const sc = cells.filter(c => c.step === s);
+    stepAverages[s] = sc.length > 0 ? Math.round(sc.reduce((a, c) => a + c.score, 0) / sc.length) : 0;
+  }
+
+  const imeAverages = {} as Record<IMELevel, number>;
+  for (const i of imes) {
+    const sc = cells.filter(c => c.ime === i);
+    imeAverages[i] = sc.length > 0 ? Math.round(sc.reduce((a, c) => a + c.score, 0) / sc.length) : 0;
+  }
+
+  const overallScore = cells.length > 0
+    ? Math.round(cells.reduce((a, c) => a + c.score, 0) / cells.length)
+    : 0;
+
+  return { cells, stepAverages, imeAverages, overallScore };
+}
+
 // ── Bloco Analysis ──
 
 function analisarBloco(formData: FormData, questions: QuestionDef[]): BlocoAnalise {
@@ -51,7 +143,7 @@ function analisarBloco(formData: FormData, questions: QuestionDef[]): BlocoAnali
   let count = 0;
 
   for (const q of questions) {
-    if (q.isPercent) continue; // skip q14 (percent input)
+    if (q.isPercent) continue;
     const answer = formData[q.id] as AnswerLetter;
     if (!answer) continue;
 
@@ -80,15 +172,15 @@ function analisarBloco(formData: FormData, questions: QuestionDef[]): BlocoAnali
   return { score: avgScore, status, positivos, negativos };
 }
 
-function determinarNivel(blocoScores: Record<BlocoId, number>): 1 | 2 | 3 {
-  const avg = Math.round(Object.values(blocoScores).reduce((a, b) => a + b, 0) / 4);
-  if (avg < 35) return 1;
-  if (avg < 65) return 2;
+function determinarNivel(matrix: STEPIMEMatrix): 1 | 2 | 3 {
+  if (matrix.imeAverages.I < 50) return 1;
+  if (matrix.imeAverages.M < 50) return 2;
   return 3;
 }
 
 export function gerarRelatorio(formData: FormData): Relatorio {
   const financeiro = calcularFinanceiro(formData);
+  const matrix = calcularMatrix(formData);
 
   const blocos: Record<BlocoId, BlocoAnalise> = {
     demanda: analisarBloco(formData, QUESTIONS_DEMANDA),
@@ -104,8 +196,7 @@ export function gerarRelatorio(formData: FormData): Relatorio {
     conversao: blocos.conversao.score,
   };
 
-  const overallScore = Math.round(Object.values(blocoScores).reduce((a, b) => a + b, 0) / 4);
-  const nivelRecomendado = determinarNivel(blocoScores);
+  const nivelRecomendado = determinarNivel(matrix);
 
   return {
     nomeClinica: formData.nomeClinica,
@@ -113,7 +204,8 @@ export function gerarRelatorio(formData: FormData): Relatorio {
     financeiro,
     blocos,
     blocoScores,
-    overallScore,
+    matrix,
+    overallScore: matrix.overallScore,
     nivelRecomendado,
     formData,
   };

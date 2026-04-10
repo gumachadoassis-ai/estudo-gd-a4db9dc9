@@ -22,8 +22,37 @@ export interface FormData {
 export type Phase = 'WELCOME' | 'FORM' | 'PROCESSING' | 'REPORT';
 export type Status = 'ok' | 'warning' | 'critical';
 export type Urgencia = 'baixa' | 'media' | 'alta';
+export type STEPDimension = 'S' | 'T' | 'E' | 'P';
+export type IMELevel = 'I' | 'M' | 'E';
 
 export type BlocoId = 'demanda' | 'posicionamento' | 'atendimento' | 'conversao';
+
+export interface STEPIMECell {
+  step: STEPDimension;
+  ime: IMELevel;
+  score: number;
+  label: string; // Iniciando / Avançando / Consolidado
+}
+
+export interface STEPIMEMatrix {
+  cells: STEPIMECell[];
+  stepAverages: Record<STEPDimension, number>;
+  imeAverages: Record<IMELevel, number>;
+  overallScore: number;
+}
+
+export const STEP_LABELS: Record<STEPDimension, { short: string; full: string }> = {
+  S: { short: 'S', full: 'Status do Paciente/Processo' },
+  T: { short: 'T', full: 'Membros da Equipe' },
+  E: { short: 'E', full: 'Ambiente' },
+  P: { short: 'P', full: 'Progresso à Meta' },
+};
+
+export const IME_LABELS: Record<IMELevel, { short: string; full: string }> = {
+  I: { short: 'I', full: 'Implementação' },
+  M: { short: 'M', full: 'Maturação' },
+  E: { short: 'E', full: 'Escala' },
+};
 
 export interface PontoAnalise {
   titulo: string;
@@ -68,6 +97,7 @@ export interface Relatorio {
   financeiro: Financeiro;
   blocos: Record<BlocoId, BlocoAnalise>;
   blocoScores: Record<BlocoId, number>;
+  matrix: STEPIMEMatrix;
   overallScore: number;
   nivelRecomendado: 1 | 2 | 3;
   formData: FormData;
