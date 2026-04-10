@@ -6,13 +6,56 @@ interface BudgetDocumentProps {
   relatorio: Relatorio;
 }
 
-const SERVICOS = [
-  { item: 'Serviço 1', servico: 'Estudo da Base Atual', valor: 'R$ 500,00' },
-  { item: 'Serviço 2', servico: 'Treinamentos', valor: 'R$ 9.000,00' },
-  { item: 'Serviço 3', servico: 'Desenvolvimento de Funil de Vendas', valor: 'R$ 1.500,00' },
-  { item: 'Serviço 4', servico: 'Prova de Capacitação', valor: 'R$ 3.000,00' },
-  { item: 'Serviço 5', servico: 'Trabalho na Base de Leads', valor: 'R$ 1.000,00' },
+const PRODUTOS = [
+  {
+    nivel: 1 as const,
+    nome: 'IMPLEMENTAÇÃO',
+    prazo: '90 Dias',
+    investimento: 15000,
+    items: [
+      'Estudo da Base Atual',
+      'Treinamento Secretária',
+      'Treinamento Gestora Comercial',
+      'Desenvolvimento de Funil de Vendas',
+      'Treinamento CRM',
+      'Prova de Capacitação',
+      'Trabalho na Base de Leads',
+    ],
+  },
+  {
+    nivel: 2 as const,
+    nome: 'MANUTENÇÃO',
+    prazo: '06 Meses',
+    investimento: 24000,
+    items: [
+      'Otimização de Processos',
+      'One a One',
+      'PDI',
+      'Plano de Metas',
+      'Metrificação de Processos',
+      'Novo Estudo de Caso Comercial',
+    ],
+    inclui: 'Inclui tudo do Nível 01',
+  },
+  {
+    nivel: 3 as const,
+    nome: 'ESCALA',
+    prazo: '12 Meses',
+    investimento: 42000,
+    items: [
+      'Crescimento de Time',
+      'Auditoria de Atendimento',
+      'Cliente Oculto',
+      'Desenvolvimento de Estratégia de Aquisição',
+      'Execução de Performance',
+    ],
+    inclui: 'Inclui tudo dos Níveis 01 e 02',
+  },
 ];
+
+function formatarMoedaPDF(valor: number): string {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+}
 
 const s = {
   page: {
