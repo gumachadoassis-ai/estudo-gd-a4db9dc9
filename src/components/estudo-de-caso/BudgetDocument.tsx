@@ -235,7 +235,15 @@ const s = {
 };
 
 const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
-  const { nomeClinica, formData } = relatorio;
+  const { nomeClinica, formData, nivelRecomendado } = relatorio;
+  const produto = PRODUTOS.find(p => p.nivel === nivelRecomendado) || PRODUTOS[0];
+  // Collect all items (include lower levels if applicable)
+  const allItems: string[] = [];
+  for (const p of PRODUTOS) {
+    if (p.nivel <= nivelRecomendado) {
+      allItems.push(...p.items);
+    }
+  }
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
@@ -276,31 +284,33 @@ const BudgetDocument = ({ relatorio }: BudgetDocumentProps) => {
         </table>
 
         {/* Services Table */}
-        <p style={s.sectionTitle}>Produtos e Serviços</p>
+        <p style={s.sectionTitle}>Produtos e Serviços — {produto.nome} (Nível {String(produto.nivel).padStart(2, '0')})</p>
         <table style={s.serviceTable}>
           <thead>
             <tr>
               <th style={s.serviceTh}>Item</th>
-              <th style={s.serviceTh}>Serviço</th>
-              <th style={s.serviceThRight}>Total</th>
+              <th style={s.serviceTh}>Entrega</th>
             </tr>
           </thead>
           <tbody>
-            {SERVICOS.map((srv, i) => (
+            {allItems.map((item, i) => (
               <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                <td style={{ ...s.serviceTd, fontWeight: 600, width: '100px' }}>{srv.item}</td>
-                <td style={s.serviceTd}>{srv.servico}</td>
-                <td style={s.serviceTdRight}>{srv.valor}</td>
+                <td style={{ ...s.serviceTd, fontWeight: 600, width: '80px' }}>{String(i + 1).padStart(2, '0')}</td>
+                <td style={s.serviceTd}>{item}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={s.totalRow}>
-              <td colSpan={2} style={s.totalLabel}>Total</td>
-              <td style={s.totalValue}>R$ 15.000,00</td>
+              <td style={s.totalLabel}>Total</td>
+              <td style={s.totalValue}>{formatarMoedaPDF(produto.investimento)}</td>
             </tr>
           </tfoot>
         </table>
+
+        <div style={{ fontSize: '11px', color: '#888', marginBottom: '16px' }}>
+          <strong>Prazo de execução:</strong> {produto.prazo}
+        </div>
 
         {/* Payment */}
         <p style={s.sectionTitle}>Forma de Pagamento</p>
