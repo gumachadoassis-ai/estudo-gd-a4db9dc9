@@ -1,13 +1,10 @@
 import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import logoGd from '@/assets/logo-gd.png';
-import type { Relatorio } from './types';
+import type { Relatorio, BlocoId } from './types';
+import { BLOCO_LABELS } from './types';
 import { formatarMoeda } from './analysis';
 import { useCountUp } from '@/hooks/useCountUp';
-import GaugeSVG from './GaugeSVG';
-import PilarCard from './PilarCard';
-import FunnelChart from './FunnelChart';
-import STEPMatrix from './STEPMatrix';
 import MethodologySection from './MethodologySection';
 import ExportPDF from './ExportPDF';
 import ProductCatalog from './ProductCatalog';
@@ -17,18 +14,26 @@ interface ReportPhaseProps {
   relatorio: Relatorio;
 }
 
+const BLOCO_COLORS: Record<BlocoId, string> = {
+  demanda: 'hsl(37, 91%, 55%)',
+  posicionamento: 'hsl(200, 80%, 55%)',
+  atendimento: 'hsl(150, 60%, 45%)',
+  conversao: 'hsl(0, 84%, 60%)',
+};
+
 const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
-  const { financeiro, pilares, nomeClinica, especialidade, cidade, nivelRecomendado, matrix } = relatorio;
-  const retornoEstimado = financeiro.faturamentoPerdidoMes * 3;
+  const { financeiro, nomeClinica, nivelRecomendado, blocos, blocoScores, overallScore } = relatorio;
   const animPerdidoMes = useCountUp(financeiro.faturamentoPerdidoMes, 2000);
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const barData = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => ({
       mes: `M${i + 1}`,
-      atual: financeiro.faturamentoAtualNum,
-      potencial: financeiro.faturamentoAtualNum + Math.round(financeiro.faturamentoPerdidoMes * (i + 1) / 12),
+      atual: financeiro.faturamentoMensalNum,
+      potencial: financeiro.faturamentoMensalNum + Math.round(financeiro.faturamentoPerdidoMes * (i + 1) / 12),
     })), [financeiro]);
+
+  const blocoIds: BlocoId[] = ['demanda', 'posicionamento', 'atendimento', 'conversao'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,8 +49,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
 
           <p className="text-sm text-primary-foreground/50 font-body mb-1">Relatório gerado para</p>
           <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground font-display">{nomeClinica}</h1>
-          <p className="text-sm text-primary-foreground/40 mt-2 font-body">{especialidade} · {cidade}</p>
-          <p className="text-[10px] text-primary-foreground/30 mt-1 font-body tracking-wider">{dataAtual}</p>
+          <p className="text-[10px] text-primary-foreground/30 mt-2 font-body tracking-wider">{dataAtual}</p>
 
           <div className="mt-10 bg-primary-foreground/[0.04] border border-primary-foreground/10 rounded-2xl p-8 max-w-xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-status-critical font-display mb-3">
@@ -55,7 +59,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
               {formatarMoeda(animPerdidoMes)}
             </p>
             <p className="text-primary-foreground/40 text-xs font-body mt-2">
-              por mês · baseado em {financeiro.cirurgiasPerdidas} procedimentos × {formatarMoeda(financeiro.ticketMedio)} ticket médio
+              por mês · baseado em {financeiro.procedimentosPerdidos} procedimentos × {formatarMoeda(financeiro.ticketMedio)} ticket médio
             </p>
           </div>
         </div>
@@ -66,53 +70,82 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
         <ExportPDF targetId="budget-document" filename={`orcamento-${nomeClinica.toLowerCase().replace(/\s+/g, '-')}`} />
       </div>
 
-      {/* Report content */}
       <div id="report-content">
 
-        {/* ═══ CENÁRIO 1: RESULTADO DO ESTUDO — Matriz STEP × IME ═══ */}
-        <STEPMatrix relatorio={relatorio} />
-
-        {/* Gauges */}
+        {/* ═══ CONSTRUÇÃO DE HIPÓTESES — Completude por dimensão ═══ */}
         <section className="bg-card py-14 px-4">
           <div className="max-w-4xl mx-auto">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Análise por Pilar</p>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-10 text-center font-display">Visão Geral da Operação</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <GaugeSVG score={pilares.posicionamento.score} label="Posicionamento" status={pilares.posicionamento.status} />
-              <GaugeSVG score={pilares.performance.score} label="Performance" status={pilares.performance.status} />
-              <GaugeSVG score={pilares.atendimento.score} label="Atendimento" status={pilares.atendimento.status} highlight />
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Construção de Hipóteses</p>
+            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-10 text-center font-display">Completude por dimensão e fase de maturidade</h2>
+
+            {/* Overall score */}
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-4 bg-background border border-border rounded-2xl px-8 py-5">
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1">Score Geral</p>
+                  <p className={`text-4xl font-bold font-display ${overallScore >= 70 ? 'text-emerald-500' : overallScore >= 45 ? 'text-amber-500' : 'text-orange-500'}`}>
+                    {overallScore}%
+                  </p>
+                </div>
+                <div className="w-px h-12 bg-border" />
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1">Maturidade</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {overallScore >= 70 ? 'Consolidado' : overallScore >= 45 ? 'Em desenvolvimento' : 'Iniciando'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Per-bloco bars */}
+            <div className="space-y-4">
+              {blocoIds.map((id) => {
+                const score = blocoScores[id];
+                const label = BLOCO_LABELS[id];
+                const bloco = blocos[id];
+                return (
+                  <div key={id} className="bg-background border border-border rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{label.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{label.badge}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          bloco.status === 'ok' ? 'bg-emerald-500/15 text-emerald-400' :
+                          bloco.status === 'warning' ? 'bg-amber-500/15 text-amber-400' :
+                          'bg-orange-500/15 text-orange-400'
+                        }`}>
+                          {bloco.status === 'ok' ? 'Consolidado' : bloco.status === 'warning' ? 'Avançando' : 'Crítico'}
+                        </span>
+                        <span className="text-lg font-bold text-foreground font-display">{score}%</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-border rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: `${score}%`, backgroundColor: BLOCO_COLORS[id] }}
+                      />
+                    </div>
+                    {/* Pontos negativos */}
+                    {bloco.negativos.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        {bloco.negativos.map((n, i) => (
+                          <div key={i} className="flex items-start gap-2 text-[11px]">
+                            <span className="text-status-critical mt-0.5">⚠</span>
+                            <span className="text-muted-foreground">{n.titulo}: <span className="text-foreground">{n.descricao}</span></span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* Pillar Analysis */}
-        <section className="bg-background py-14 px-4">
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="mb-4">
-              <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1">Análise Detalhada</p>
-              <h2 className="text-xl md:text-2xl font-bold text-foreground font-display">Diagnóstico por Pilar</h2>
-            </div>
-            <PilarCard nome="Posicionamento" pilar={pilares.posicionamento} />
-            <PilarCard nome="Performance" pilar={pilares.performance} />
-            <PilarCard nome="Atendimento" pilar={pilares.atendimento} />
-          </div>
-        </section>
-
-        {/* Funnel */}
-        <section className="bg-card py-14 px-4">
-          <div className="max-w-4xl mx-auto">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-1 text-center">Mapeamento de Conversão</p>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-10 text-center font-display">Análise de Funil Operacional</h2>
-            <FunnelChart
-              leadsMes={financeiro.leadsMesEstimado}
-              cirurgiasAtuais={financeiro.cirurgiasAtuais}
-              cirurgiasPotencial={financeiro.cirurgiasPotencial}
-              cirurgiasPerdidas={financeiro.cirurgiasPerdidas}
-            />
-          </div>
-        </section>
-
-        {/* Financial Impact */}
+        {/* ═══ IMPACTO FINANCEIRO ═══ */}
         <section className="bg-surface-dark py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-1 text-center">Impacto Financeiro</p>
@@ -130,7 +163,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
                 </div>
               </div>
               <p className="text-[10px] text-primary-foreground/30 mt-6 font-body tracking-wider">
-                {financeiro.cirurgiasPerdidas} procedimentos/mês × {formatarMoeda(financeiro.ticketMedio)} ticket médio
+                {financeiro.procedimentosPerdidos} procedimentos/mês × {formatarMoeda(financeiro.ticketMedio)} ticket médio
               </p>
             </div>
 
@@ -153,11 +186,10 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           </div>
         </section>
 
-        {/* ═══ CENÁRIO 2: NOSSA METODOLOGIA ═══ */}
+        {/* ═══ NOSSA METODOLOGIA ═══ */}
         <MethodologySection />
 
-        {/* ═══ CENÁRIO 3: OFERTA DE PREÇO ═══ */}
-        {/* Análise matemática do nível recomendado */}
+        {/* ═══ ANÁLISE MATEMÁTICA — Diagnóstico de Maturidade ═══ */}
         <section className="bg-background py-14 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="mb-10 text-center">
@@ -166,31 +198,46 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {(['I', 'M', 'E'] as const).map((ime) => {
-                const avg = matrix.imeAverages[ime];
-                const label = ime === 'I' ? 'Implementação' : ime === 'M' ? 'Maturação' : 'Escala';
-                const isActive = (ime === 'I' && nivelRecomendado === 1) ||
-                                 (ime === 'M' && nivelRecomendado === 2) ||
-                                 (ime === 'E' && nivelRecomendado === 3);
+              {([1, 2, 3] as const).map((nivel) => {
+                const isActive = nivelRecomendado === nivel;
+                const nivelLabel = nivel === 1 ? 'Implementação' : nivel === 2 ? 'Maturação' : 'Escala';
+                const nivelDesc = nivel === 1
+                  ? 'Estruturação base dos processos comerciais e de demanda'
+                  : nivel === 2
+                  ? 'Otimização e padronização dos processos existentes'
+                  : 'Escala com automação e performance avançada';
                 return (
-                  <div key={ime} className={`rounded-2xl p-6 text-center border ${isActive ? 'bg-primary/[0.08] border-primary/30' : 'bg-card border-border'}`}>
-                    <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-2">{label}</p>
-                    <p className={`text-3xl font-bold font-display ${isActive ? 'text-primary' : 'text-foreground'}`}>{avg}%</p>
-                    <p className={`text-xs mt-1 ${avg >= 66 ? 'text-emerald-500' : avg >= 36 ? 'text-amber-500' : 'text-orange-500'}`}>
-                      {avg >= 66 ? 'Consolidado' : avg >= 36 ? 'Avançando' : 'Iniciando'}
-                    </p>
+                  <div key={nivel} className={`rounded-2xl p-6 text-center border ${isActive ? 'bg-primary/[0.08] border-primary/30' : 'bg-card border-border'}`}>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-display mb-2">Nível {nivel}</p>
+                    <p className={`text-xl font-bold font-display ${isActive ? 'text-primary' : 'text-foreground'}`}>{nivelLabel}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">{nivelDesc}</p>
                     {isActive && (
-                      <p className="text-[9px] mt-3 text-primary font-bold uppercase tracking-wider">Nível de intervenção recomendado</p>
+                      <p className="text-[9px] mt-3 text-primary font-bold uppercase tracking-wider">Recomendado para esta operação</p>
                     )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Score breakdown */}
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Scores por bloco</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {blocoIds.map((id) => (
+                  <div key={id} className="text-center">
+                    <p className={`text-2xl font-bold font-display ${blocoScores[id] >= 70 ? 'text-emerald-500' : blocoScores[id] >= 45 ? 'text-amber-500' : 'text-orange-500'}`}>
+                      {blocoScores[id]}%
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{BLOCO_LABELS[id].title}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Product Catalog */}
-        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={retornoEstimado} />
+        {/* ═══ CATÁLOGO DE SERVIÇOS ═══ */}
+        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={financeiro.faturamentoPerdidoMes * 3} />
       </div>
 
       {/* Hidden budget document for PDF export */}
