@@ -15,26 +15,29 @@ interface ReportPhaseProps {
   relatorio: Relatorio;
 }
 
-const BLOCO_COLORS: Record<BlocoId, string> = {
-  demanda: 'hsl(37, 91%, 55%)',
-  posicionamento: 'hsl(200, 80%, 55%)',
-  atendimento: 'hsl(150, 60%, 45%)',
-  conversao: 'hsl(0, 84%, 60%)',
-};
-
 const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
   const { financeiro, nomeClinica, nivelRecomendado, blocos, blocoScores, overallScore, matrix } = relatorio;
-  const animPerdidoMes = useCountUp(financeiro.faturamentoPerdidoMes, 2000);
+  const animMinimo = useCountUp(financeiro.perdidoMinimoMes, 2000);
+  const animMaximo = useCountUp(financeiro.perdidoMaximoMes, 2000);
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
+  // Gráfico: receita atual vs mínimo ideal vs potencial máximo, progressivo mês a mês
   const barData = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => ({
-      mes: `M${i + 1}`,
-      atual: financeiro.faturamentoMensalNum,
-      potencial: financeiro.faturamentoMensalNum + Math.round(financeiro.faturamentoPerdidoMes * (i + 1) / 12),
-    })), [financeiro]);
+    Array.from({ length: 12 }, (_, i) => {
+      const progressFactor = (i + 1) / 12; // cresce linearmente de ~8% a 100%
+      return {
+        mes: `M${i + 1}`,
+        atual: financeiro.faturamentoMensalNum,
+        minimo: financeiro.faturamentoMensalNum + Math.round(financeiro.perdidoMinimoMes * progressFactor),
+        maximo: financeiro.faturamentoMensalNum + Math.round(financeiro.perdidoMaximoMes * progressFactor),
+      };
+    }), [financeiro]);
 
   const blocoIds: BlocoId[] = ['demanda', 'posicionamento', 'atendimento', 'conversao'];
+
+  // Procedimentos perdidos no cenário mínimo (para display)
+  const procPerdidosMinimo = financeiro.procedimentosMinimo - financeiro.procedimentosAtuais;
+  const procPerdidosMaximo = financeiro.procedimentosMaximo - financeiro.procedimentosAtuais;
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,16 +55,31 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
           <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground font-display">{nomeClinica}</h1>
           <p className="text-[10px] text-primary-foreground/30 mt-2 font-body tracking-wider">{dataAtual}</p>
 
-          <div className="mt-10 bg-primary-foreground/[0.04] border border-primary-foreground/10 rounded-2xl p-8 max-w-xl mx-auto">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-status-critical font-display mb-3">
-              Receita não capturada
-            </p>
-            <p className="text-3xl md:text-4xl font-bold text-primary font-display animate-counter-tick">
-              {formatarMoeda(animPerdidoMes)}
-            </p>
-            <p className="text-primary-foreground/40 text-xs font-body mt-2">
-              por mês · baseado em {financeiro.procedimentosPerdidos} procedimentos × {formatarMoeda(financeiro.ticketMedio)} ticket médio
-            </p>
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            {/* Mínimo ideal */}
+            <div className="bg-primary-foreground/[0.04] border border-primary-foreground/10 rounded-2xl p-6">
+              <p className="text-[10px] tracking-[0.2em] uppercase text-amber-500 font-display mb-3">
+                Mínimo ideal perdido
+              </p>
+              <p className="text-2xl md:text-3xl font-bold text-primary font-display animate-counter-tick">
+                {formatarMoeda(animMinimo)}
+              </p>
+              <p className="text-primary-foreground/40 text-[10px] font-body mt-2">
+                /mês · {Math.max(procPerdidosMinimo, 0)} proc. × {formatarMoeda(financeiro.ticketMedio)} · conv. {(financeiro.conversaoMinima * 100).toFixed(0)}%
+              </p>
+            </div>
+            {/* Potencial máximo */}
+            <div className="bg-primary-foreground/[0.04] border border-status-critical/20 rounded-2xl p-6">
+              <p className="text-[10px] tracking-[0.2em] uppercase text-status-critical font-display mb-3">
+                Potencial máximo escalável
+              </p>
+              <p className="text-2xl md:text-3xl font-bold text-status-critical font-display animate-counter-tick">
+                {formatarMoeda(animMaximo)}
+              </p>
+              <p className="text-primary-foreground/40 text-[10px] font-body mt-2">
+                /mês · {Math.max(procPerdidosMaximo, 0)} proc. × {formatarMoeda(financeiro.ticketMedio)} · conv. {(financeiro.conversaoMaxima * 100).toFixed(0)}%
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -85,16 +103,18 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
             <div className="bg-primary-foreground/[0.04] border border-primary-foreground/10 rounded-2xl p-8 text-center mb-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-2">Perda Mensal Estimada</p>
-                  <p className="text-3xl md:text-4xl font-bold text-primary font-display">{formatarMoeda(financeiro.faturamentoPerdidoMes)}</p>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-2">Perda Mínima Ideal / mês</p>
+                  <p className="text-3xl md:text-4xl font-bold text-primary font-display">{formatarMoeda(financeiro.perdidoMinimoMes)}</p>
+                  <p className="text-[10px] text-primary-foreground/30 mt-1 font-body">Anual: {formatarMoeda(financeiro.perdidoMinimoAno)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-2">Projeção Anual</p>
-                  <p className="text-3xl md:text-4xl font-bold text-primary-foreground font-display">{formatarMoeda(financeiro.faturamentoPerdidoAno)}</p>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-primary-foreground/40 font-display mb-2">Potencial Máximo / mês</p>
+                  <p className="text-3xl md:text-4xl font-bold text-primary-foreground font-display">{formatarMoeda(financeiro.perdidoMaximoMes)}</p>
+                  <p className="text-[10px] text-primary-foreground/30 mt-1 font-body">Anual: {formatarMoeda(financeiro.perdidoMaximoAno)}</p>
                 </div>
               </div>
               <p className="text-[10px] text-primary-foreground/30 mt-6 font-body tracking-wider">
-                {financeiro.procedimentosPerdidos} procedimentos/mês × {formatarMoeda(financeiro.ticketMedio)} ticket médio
+                {financeiro.leadsMesEstimado} leads/mês · conversão atual {(financeiro.conversaoAtual * 100).toFixed(0)}% → mínimo {(financeiro.conversaoMinima * 100).toFixed(0)}% / máximo {(financeiro.conversaoMaxima * 100).toFixed(0)}%
               </p>
             </div>
 
@@ -109,7 +129,8 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
                     contentStyle={{ backgroundColor: 'hsl(40, 7%, 14%)', border: 'none', borderRadius: '12px', fontSize: '12px', color: '#fff' }}
                   />
                   <Bar dataKey="atual" fill="#4B5563" name="Atual" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="potencial" fill="hsl(37, 91%, 55%)" name="Potencial" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="minimo" fill="hsl(37, 91%, 55%)" name="Mínimo Ideal" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="maximo" fill="hsl(150, 60%, 45%)" name="Potencial Máximo" radius={[3, 3, 0, 0]} />
                   <ReferenceLine x="M1" stroke="hsl(0, 84%, 60%)" strokeDasharray="3 3" label={{ value: "Hoje", fill: 'hsl(0, 84%, 60%)', fontSize: 10 }} />
                 </BarChart>
               </ResponsiveContainer>
@@ -168,7 +189,7 @@ const ReportPhase = ({ relatorio }: ReportPhaseProps) => {
         </section>
 
         {/* ═══ CATÁLOGO DE SERVIÇOS ═══ */}
-        <ProductCatalog nivelRecomendado={nivelRecomendado} retornoEstimado={financeiro.faturamentoPerdidoMes * 3} />
+        <ProductCatalog nivelRecomendado={nivelRecomendado} financeiro={financeiro} />
       </div>
 
       {/* Hidden budget document for PDF export */}

@@ -1,9 +1,10 @@
 import { Check, Star, Shield } from 'lucide-react';
 import { formatarMoeda } from './analysis';
+import type { Financeiro } from './types';
 
 interface ProductCatalogProps {
   nivelRecomendado: 1 | 2 | 3;
-  retornoEstimado: number;
+  financeiro: Financeiro;
 }
 
 const PRODUTOS = [
@@ -11,6 +12,7 @@ const PRODUTOS = [
     nivel: 1 as const,
     nome: 'IMPLEMENTAÇÃO',
     prazo: '90 Dias',
+    prazoMeses: 3,
     investimento: 15000,
     items: [
       'Estudo da Base Atual',
@@ -27,6 +29,7 @@ const PRODUTOS = [
     nivel: 2 as const,
     nome: 'MANUTENÇÃO',
     prazo: '06 Meses',
+    prazoMeses: 6,
     investimento: 24000,
     items: [
       'Otimização de Processos',
@@ -42,8 +45,9 @@ const PRODUTOS = [
     nivel: 3 as const,
     nome: 'ESCALA',
     prazo: '12 Meses',
-    investimento: 42000,
+    prazoMeses: 12,
     badge: 'ESCALA MÁXIMA',
+    investimento: 42000,
     items: [
       'Crescimento de Time',
       'Auditoria de Atendimento',
@@ -55,7 +59,17 @@ const PRODUTOS = [
   },
 ];
 
-const ProductCatalog = ({ nivelRecomendado, retornoEstimado }: ProductCatalogProps) => {
+const ProductCatalog = ({ nivelRecomendado, financeiro }: ProductCatalogProps) => {
+  // Calcula retorno progressivo mês a mês para cada plano
+  // Usa perdidoMinimoMes como base de recuperação, crescendo linearmente ao longo do prazo
+  const calcRetorno = (prazoMeses: number) => {
+    let total = 0;
+    for (let i = 1; i <= prazoMeses; i++) {
+      total += Math.round(financeiro.perdidoMinimoMes * (i / prazoMeses));
+    }
+    return total;
+  };
+
   return (
     <section className="bg-surface-dark py-14 px-4">
       <div className="max-w-5xl mx-auto">
@@ -71,6 +85,7 @@ const ProductCatalog = ({ nivelRecomendado, retornoEstimado }: ProductCatalogPro
         <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
           {PRODUTOS.map((produto) => {
             const isRecommended = produto.nivel === nivelRecomendado;
+            const retorno = calcRetorno(produto.prazoMeses);
 
             return (
               <div
@@ -127,10 +142,12 @@ const ProductCatalog = ({ nivelRecomendado, retornoEstimado }: ProductCatalogPro
                   <p className={`text-[11px] font-medium ${isRecommended ? 'text-primary-foreground/70' : 'text-primary/80'}`}>{produto.inclui}</p>
                 )}
 
-                {isRecommended && retornoEstimado > 0 && (
-                  <div className="mt-6 rounded-xl p-4 text-center bg-primary-foreground/15">
-                    <p className="text-[10px] uppercase tracking-wider font-display text-primary-foreground/70 mb-1">Retorno estimado nos primeiros 90 dias</p>
-                    <p className="text-lg font-bold font-display text-primary-foreground">{formatarMoeda(retornoEstimado)}</p>
+                {retorno > 0 && (
+                  <div className={`mt-6 rounded-xl p-4 text-center ${isRecommended ? 'bg-primary-foreground/15' : 'bg-primary-foreground/[0.04] border border-primary-foreground/10'}`}>
+                    <p className={`text-[10px] uppercase tracking-wider font-display mb-1 ${isRecommended ? 'text-primary-foreground/70' : 'text-primary-foreground/40'}`}>
+                      Projeção de receita recuperada em {produto.prazo.toLowerCase()}
+                    </p>
+                    <p className={`text-lg font-bold font-display ${isRecommended ? 'text-primary-foreground' : 'text-primary-foreground/80'}`}>{formatarMoeda(retorno)}</p>
                   </div>
                 )}
               </div>
