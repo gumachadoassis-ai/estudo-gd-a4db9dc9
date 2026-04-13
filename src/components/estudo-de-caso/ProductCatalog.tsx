@@ -60,12 +60,29 @@ const PRODUTOS = [
 ];
 
 const ProductCatalog = ({ nivelRecomendado, financeiro }: ProductCatalogProps) => {
-  // Calcula retorno progressivo mês a mês para cada plano
-  // Usa perdidoMinimoMes como base de recuperação, crescendo linearmente ao longo do prazo
+  // Projeção de recuperação progressiva:
+  // Meses 1-3: crescimento linear até 40% conversão (perdidoMinimoMes)
+  // Meses 4-6: crescimento linear de 40% até 80% (perdidoMaximoMes)
+  // Meses 7-12: crescimento linear de 80% até 150% do potencial máximo
   const calcRetorno = (prazoMeses: number) => {
     let total = 0;
+    const receitaMin = financeiro.perdidoMinimoMes; // meta 40%
+    const receitaMax = financeiro.perdidoMaximoMes; // meta 80%
+    const receitaEscala = Math.round(receitaMax * 1.5); // meta 150%
+
     for (let i = 1; i <= prazoMeses; i++) {
-      total += Math.round(financeiro.perdidoMinimoMes * (i / prazoMeses));
+      if (i <= 3) {
+        // Fase 1: 0 → perdidoMinimoMes (40% conversão)
+        total += Math.round(receitaMin * (i / 3));
+      } else if (i <= 6) {
+        // Fase 2: perdidoMinimoMes → perdidoMaximoMes (80% conversão)
+        const progresso = (i - 3) / 3;
+        total += Math.round(receitaMin + (receitaMax - receitaMin) * progresso);
+      } else {
+        // Fase 3: perdidoMaximoMes → 150% do máximo
+        const progresso = (i - 6) / 6;
+        total += Math.round(receitaMax + (receitaEscala - receitaMax) * progresso);
+      }
     }
     return total;
   };
