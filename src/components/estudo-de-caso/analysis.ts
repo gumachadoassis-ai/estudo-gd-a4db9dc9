@@ -21,24 +21,34 @@ export function calcularFinanceiro(r: FormData) {
 
   const procedimentosAtuais = Math.round(faturamentoMensalNum / ticketMedio);
   const leadsMesEstimado = Math.round(procedimentosAtuais / conversaoAtual);
-  const conversaoPotencial = 0.35;
-  const procedimentosPotencial = Math.round(leadsMesEstimado * conversaoPotencial);
-  const procedimentosPerdidos = Math.max(procedimentosPotencial - procedimentosAtuais, 0);
-  const faturamentoPerdidoMes = procedimentosPerdidos * ticketMedio;
-  const faturamentoPerdidoAno = faturamentoPerdidoMes * 12;
+
+  // Mínimo ideal: 40% de conversão
+  const conversaoMinima = 0.40;
+  const procedimentosMinimo = Math.round(leadsMesEstimado * conversaoMinima);
+  const perdidoMinimoMes = Math.max((procedimentosMinimo - procedimentosAtuais) * ticketMedio, 0);
+  const perdidoMinimoAno = perdidoMinimoMes * 12;
+
+  // Potencial máximo escalável: 80% de conversão
+  const conversaoMaxima = 0.80;
+  const procedimentosMaximo = Math.round(leadsMesEstimado * conversaoMaxima);
+  const perdidoMaximoMes = Math.max((procedimentosMaximo - procedimentosAtuais) * ticketMedio, 0);
+  const perdidoMaximoAno = perdidoMaximoMes * 12;
 
   return {
     faturamentoMensal: r.faturamentoMensal,
     ticketMedio,
     faturamentoMensalNum,
     conversaoAtual,
-    conversaoPotencial,
     leadsMesEstimado,
     procedimentosAtuais,
-    procedimentosPotencial,
-    procedimentosPerdidos,
-    faturamentoPerdidoMes,
-    faturamentoPerdidoAno,
+    conversaoMinima,
+    procedimentosMinimo,
+    perdidoMinimoMes,
+    perdidoMinimoAno,
+    conversaoMaxima,
+    procedimentosMaximo,
+    perdidoMaximoMes,
+    perdidoMaximoAno,
   };
 }
 

@@ -73,13 +73,18 @@ export interface Financeiro {
   ticketMedio: number;
   faturamentoMensalNum: number;
   conversaoAtual: number;
-  conversaoPotencial: number;
   leadsMesEstimado: number;
   procedimentosAtuais: number;
-  procedimentosPotencial: number;
-  procedimentosPerdidos: number;
-  faturamentoPerdidoMes: number;
-  faturamentoPerdidoAno: number;
+  // Mínimo ideal (40% conversão)
+  conversaoMinima: number;
+  procedimentosMinimo: number;
+  perdidoMinimoMes: number;
+  perdidoMinimoAno: number;
+  // Potencial máximo escalável (80% conversão)
+  conversaoMaxima: number;
+  procedimentosMaximo: number;
+  perdidoMaximoMes: number;
+  perdidoMaximoAno: number;
 }
 
 export interface QuestionDef {
