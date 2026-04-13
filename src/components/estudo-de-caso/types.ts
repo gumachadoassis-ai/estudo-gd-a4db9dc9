@@ -162,7 +162,7 @@ export const QUESTIONS_CONVERSAO: QuestionDef[] = [
     text: 'Follow-up de leads',
     options: ['Não existe', 'Raramente', 'Às vezes', 'Frequente', 'Estruturado'] },
   { id: 'q14', num: 14, bloco: 'conversao', isPercent: true,
-    text: 'Conversão (lead → consulta → cirurgia)',
+    text: 'Conversão de contato para agendamento',
     options: ['', '', '', '', ''] }, // not used, it's a percent input
   { id: 'q15', num: 15, bloco: 'conversao',
     text: 'Comparecimento em consulta',
